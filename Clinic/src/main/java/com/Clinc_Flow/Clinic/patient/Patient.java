@@ -49,6 +49,18 @@ public class Patient {
     @Column(name = "emergency_contact_phone", length = 20)
     private String emergencyContactPhone;
 
+    @Column(nullable = false)
+    private Boolean archived = false;
+
+    @Column(name = "created_by_type", length = 20)
+    private String createdByType;
+
+    @Column(name = "created_by_id")
+    private Long createdById;
+
+    @Column(name = "created_by_name", length = 100)
+    private String createdByName;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 

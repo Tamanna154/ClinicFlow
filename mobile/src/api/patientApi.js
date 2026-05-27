@@ -2,8 +2,8 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 // Dynamic API Base URL with automated network probing
-let activeApiBase = 'http://10.65.55.83:8080/api'; // Smart default fallback
-const PROBE_TIMEOUT = 1200; // Fast 1.2s timeout for local ping
+let activeApiBase = 'http://10.96.167.83:8080/api'; // Fallback if probing fails
+const PROBE_TIMEOUT = 1500; // 1.5s timeout for local ping
 
 const probeUrl = async (url) => {
   try {
@@ -26,24 +26,27 @@ export const ensureApiConnected = () => {
   probePromise = (async () => {
     const candidates = [];
 
-    // 1. Expo Dev Server LAN IP (Metro Bundler host)
-    const hostUri = Constants?.expoConfig?.hostUri;
-    if (hostUri) {
-      const ip = hostUri.split(':')[0];
-      if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
-        candidates.push(`http://${ip}:8080/api`);
-      }
-    }
-
-    // 2. Loopback, adb reverse, and emulator candidates (applicable for both Android and iOS)
+    // 1. Loopback, adb reverse, and emulator candidates (highest priority for stable USB debugging)
     candidates.push('http://localhost:8080/api');
     candidates.push('http://127.0.0.1:8080/api');
     if (Platform.OS === 'android') {
       candidates.push('http://10.0.2.2:8080/api'); // Android Emulator Host Alias
     }
 
-    // 3. Fallbacks
-    candidates.push('http://10.65.55.83:8080/api');
+    // 2. Expo Dev Server LAN IP (Metro Bundler host)
+    const hostUri = Constants?.expoConfig?.hostUri;
+    let devIp = null;
+    if (hostUri) {
+      devIp = hostUri.split(':')[0];
+      if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(devIp)) {
+        candidates.push(`http://${devIp}:8080/api`);
+      }
+    }
+
+    // 3. Common LAN subnets (last resort)
+    if (devIp) candidates.push(`http://${devIp}:8080/api`);
+    candidates.push('http://10.96.167.83:8080/api');
+    candidates.push('http://192.168.1.100:8080/api');
 
     // Filter duplicates
     const uniqueCandidates = [...new Set(candidates)];
@@ -72,9 +75,10 @@ const getApiBase = async () => {
 };
 
 export const patientApi = {
-  async getAll() {
+  async getAll(archived) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/patients`);
+    const params = archived ? `?archived=${archived}` : '';
+    const res = await fetch(`${apiBase}/patients${params}`);
     if (!res.ok) throw new Error('Failed to fetch patients');
     return res.json();
   },
@@ -135,5 +139,21 @@ export const patientApi = {
     });
     if (!res.ok) throw new Error('Failed to delete patient');
   },
+
+  async archive(id) {
+    const apiBase = await getApiBase();
+    const res = await fetch(`${apiBase}/patients/${id}/archive`, { method: 'PATCH' });
+    if (!res.ok) throw new Error('Failed to archive patient');
+    return res.json();
+  },
+
+  async restore(id) {
+    const apiBase = await getApiBase();
+    const res = await fetch(`${apiBase}/patients/${id}/restore`, { method: 'PATCH' });
+    if (!res.ok) throw new Error('Failed to restore patient');
+    return res.json();
+  },
 };
+
+export const getActiveApiBase = () => activeApiBase;
 

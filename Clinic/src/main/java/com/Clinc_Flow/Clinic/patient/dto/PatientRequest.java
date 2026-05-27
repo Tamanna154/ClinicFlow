@@ -42,6 +42,10 @@ public class PatientRequest {
     @Size(max = 20)
     private String emergencyContactPhone;
 
+    private String createdByType;
+    private Long createdById;
+    private String createdByName;
+
     // Fields for backward-compatibility with the old mobile app structure
     private String firstName;
     private String lastName;

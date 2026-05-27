@@ -9,14 +9,16 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/patients")
+@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.OPTIONS})
 @RequiredArgsConstructor
 public class PatientController {
 
     private final PatientService patientService;
 
     @GetMapping
-    public ResponseEntity<List<PatientResponse>> getAllPatients() {
-        return ResponseEntity.ok(patientService.findAll());
+    public ResponseEntity<List<PatientResponse>> getAllPatients(
+            @RequestParam(required = false) Boolean archived) {
+        return ResponseEntity.ok(patientService.findAll(archived));
     }
 
     @GetMapping("/{id}")
@@ -43,8 +45,20 @@ public class PatientController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{id}/archive")
+    public ResponseEntity<PatientResponse> archivePatient(@PathVariable Long id) {
+        return ResponseEntity.ok(patientService.archive(id));
+    }
+
+    @PatchMapping("/{id}/restore")
+    public ResponseEntity<PatientResponse> restorePatient(@PathVariable Long id) {
+        return ResponseEntity.ok(patientService.restore(id));
+    }
+
     @GetMapping("/search")
-    public ResponseEntity<List<PatientResponse>> searchPatients(@RequestParam(value = "q", required = false) String query) {
-        return ResponseEntity.ok(patientService.search(query));
+    public ResponseEntity<List<PatientResponse>> searchPatients(
+            @RequestParam(value = "q", required = false) String query,
+            @RequestParam(required = false) Boolean archived) {
+        return ResponseEntity.ok(patientService.search(query, archived));
     }
 }
