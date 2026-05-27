@@ -48,6 +48,9 @@ public class Doctor {
     @Column(name = "google_refresh_token", columnDefinition = "TEXT")
     private String googleRefreshToken;
 
+    @Column(columnDefinition = "jsonb")
+    private String achievements;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 

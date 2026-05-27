@@ -93,6 +93,29 @@ export default function DoctorDetailScreen({ route, navigation }) {
           <Row icon="🎓" label="Qualifications" value={doctor.qualifications} />
         </Section>
 
+        {doctor.achievements?.length > 0 && (
+          <Section title="Achievements">
+            {doctor.achievements.map((ach, idx) => (
+              <View key={idx} style={styles.achievementCard}>
+                <View style={styles.achievementDot} />
+                <View style={styles.achievementContent}>
+                  <View style={styles.achievementTitleRow}>
+                    <Text style={styles.achievementTitle}>{ach.title}</Text>
+                    {ach.year ? <Text style={styles.achievementYear}>{ach.year}</Text> : null}
+                  </View>
+                  {ach.description ? <Text style={styles.achievementDesc}>{ach.description}</Text> : null}
+                </View>
+              </View>
+            ))}
+          </Section>
+        )}
+
+        {doctor.achievements?.length === 0 && (
+          <Section title="Achievements">
+            <Text style={styles.emptyText}>No achievements listed</Text>
+          </Section>
+        )}
+
         {doctor.bio && (
           <Section title="About">
             <Text style={styles.bioText}>{doctor.bio}</Text>
@@ -189,4 +212,11 @@ const styles = StyleSheet.create({
   editBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', ...shadows.sm },
   deleteBtn: { flex: 1, backgroundColor: colors.error, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', ...shadows.sm },
   btnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  achievementCard: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  achievementDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary, marginTop: 5, marginRight: 12 },
+  achievementContent: { flex: 1 },
+  achievementTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  achievementTitle: { fontSize: 14, fontWeight: '700', color: colors.text, flex: 1, marginRight: 8 },
+  achievementYear: { fontSize: 12, fontWeight: '600', color: colors.primary },
+  achievementDesc: { fontSize: 12, color: colors.textSecondary, fontWeight: '500', lineHeight: 18 },
 });

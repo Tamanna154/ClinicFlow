@@ -1,5 +1,6 @@
 package com.Clinc_Flow.Clinic.sms;
 
+import com.Clinc_Flow.Clinic.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,8 @@ import java.util.*;
 @Slf4j
 public class SmsController {
 
+    private final NotificationService notificationService;
+
     @PostMapping("/bulk")
     public ResponseEntity<?> sendBulkSms(@RequestBody BulkSmsRequest request) {
         if (request.getPhoneNumbers() == null || request.getPhoneNumbers().isEmpty()) {
@@ -23,7 +26,12 @@ public class SmsController {
         }
         List<Map<String, Object>> results = new ArrayList<>();
         for (String phone : request.getPhoneNumbers()) {
-            log.info("SENDING SMS to {}: {}", phone, request.getMessage());
+            try {
+                notificationService.sendSms(phone, request.getMessage());
+            } catch (Exception e) {
+                log.warn("SMS failed, falling back to log: {}", e.getMessage());
+                log.info("SENDING SMS to {}: {}", phone, request.getMessage());
+            }
             Map<String, Object> entry = new HashMap<>();
             entry.put("phone", phone);
             entry.put("status", "SIMULATED_SENT");

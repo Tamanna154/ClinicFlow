@@ -24,6 +24,7 @@ public class PatientResponse {
     private String emergencyContactName;
     private String emergencyContactPhone;
     private Boolean archived;
+    private Long assignedDoctorId;
     private String createdByType;
     private Long createdById;
     private String createdByName;
@@ -107,6 +108,7 @@ public class PatientResponse {
                 .emergencyContactName(patient.getEmergencyContactName())
                 .emergencyContactPhone(patient.getEmergencyContactPhone())
                 .archived(patient.getArchived())
+                .assignedDoctorId(patient.getAssignedDoctorId())
                 .createdByType(patient.getCreatedByType())
                 .createdById(patient.getCreatedById())
                 .createdByName(patient.getCreatedByName())

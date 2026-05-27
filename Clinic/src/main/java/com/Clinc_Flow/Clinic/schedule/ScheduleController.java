@@ -137,6 +137,46 @@ public class ScheduleController {
             }
         }
 
+        if (suggestions.isEmpty()) {
+            for (int dayOffset = -1; dayOffset <= 1; dayOffset += 2) {
+                LocalDate adjDate = ld.plusDays(dayOffset);
+                String adjDayOfWeek = adjDate.getDayOfWeek().name();
+                List<DoctorAvailability> adjAvail = availabilityRepository
+                        .findByDoctorIdAndDayOfWeek(doctorId, adjDayOfWeek)
+                        .map(List::of).orElseGet(List::of);
+                if (adjAvail.isEmpty()) continue;
+
+                List<Appointment> adjBookings = appointmentRepository
+                        .findByDoctorIdAndAppointmentDateOrderByStartTime(doctorId, adjDate);
+
+                for (DoctorAvailability a : adjAvail) {
+                    if (!a.getIsAvailable()) continue;
+                    LocalTime slotStart = a.getStartTime();
+                    int duration = a.getSlotDuration() != null ? a.getSlotDuration() : 30;
+                    while (slotStart.plusMinutes(duration).isBefore(a.getEndTime())
+                            || slotStart.plusMinutes(duration).equals(a.getEndTime())) {
+                        LocalTime slotEnd = slotStart.plusMinutes(duration);
+                        final LocalTime ss = slotStart;
+                        final LocalTime se = slotEnd;
+                        boolean conflicts = adjBookings.stream().anyMatch(b ->
+                                !b.getStartTime().isAfter(ss) && !b.getEndTime().isBefore(se) ||
+                                (b.getStartTime().isBefore(se) && b.getEndTime().isAfter(ss)));
+                        if (!conflicts) {
+                            Map<String, Object> slot = new HashMap<>();
+                            slot.put("startTime", ss.toString());
+                            slot.put("endTime", se.toString());
+                            slot.put("date", adjDate.toString());
+                            slot.put("dayOffset", dayOffset);
+                            suggestions.add(slot);
+                            if (suggestions.size() >= 3) break;
+                        }
+                        slotStart = slotEnd;
+                    }
+                    if (suggestions.size() >= 3) break;
+                }
+            }
+        }
+
         return ResponseEntity.ok(Map.of(
                 "doctorId", doctorId, "date", date,
                 "requestedStart", startTime, "requestedEnd", endTime,

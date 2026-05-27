@@ -5,10 +5,11 @@ import {
 } from 'react-native';
 import { login } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
+import { setToken as setApiToken } from '../api/client';
 import { colors, borderRadius, shadows } from '../theme';
 
-export default function LoginScreen() {
-  const { setUser } = useAuth();
+export default function LoginScreen({ navigation }) {
+  const { setUser, setToken } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,8 +21,11 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      const user = await login(username.trim(), password.trim());
+      const data = await login(username.trim(), password.trim());
+      const user = { id: data.id, name: data.name, username: data.username, role: data.role, doctorId: data.doctorId, patientId: data.patientId };
       setUser(user);
+      setToken(data.token);
+      setApiToken(data.token);
     } catch (err) {
       Alert.alert('Login Failed', err.message);
     } finally {
@@ -74,6 +78,10 @@ export default function LoginScreen() {
               <Text style={styles.loginBtnText}>Sign In</Text>
             )}
           </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate('PatientRegister')} style={styles.linkWrap}>
+            <Text style={styles.linkText}>New patient? <Text style={styles.linkHighlight}>Create an account</Text></Text>
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.hint}>Doctor: doctor@gmail.com / doctor123</Text>
@@ -110,4 +118,7 @@ const styles = StyleSheet.create({
   },
   loginBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   hint: { fontSize: 11, color: '#FFFFFFAA', marginTop: 8, textAlign: 'center' },
+  linkWrap: { marginTop: 16, alignItems: 'center' },
+  linkText: { fontSize: 13, color: colors.textSecondary },
+  linkHighlight: { color: colors.primary, fontWeight: '700' },
 });

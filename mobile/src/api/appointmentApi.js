@@ -123,4 +123,29 @@ export const appointmentApi = {
     });
     if (!res.ok) throw new Error('Failed to delete appointment');
   },
+
+  async patientBook(doctorId, date, startTime, endTime, reason) {
+    const apiBase = await getApiBase();
+    const res = await fetch(`${apiBase}/appointments/patient-book`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        doctorId,
+        appointmentDate: date,
+        startTime,
+        endTime,
+        reason: reason || null,
+      }),
+    });
+    if (!res.ok) {
+      let errMsg = 'Failed to book appointment';
+      try {
+        const text = await res.text();
+        const err = JSON.parse(text);
+        errMsg = err.errors?.join(', ') || err.message || errMsg;
+      } catch (e) {}
+      throw new Error(errMsg);
+    }
+    return res.json();
+  },
 };

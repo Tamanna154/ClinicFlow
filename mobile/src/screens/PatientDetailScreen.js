@@ -35,6 +35,7 @@ function Row({ label, value, icon, isLink, onPress }) {
 export default function PatientDetailScreen({ route, navigation }) {
   const initial = route.params.patient;
   const [patient, setPatient] = useState(initial);
+  const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const isDoctor = user?.role === 'DOCTOR';
@@ -43,6 +44,8 @@ export default function PatientDetailScreen({ route, navigation }) {
     let mounted = true;
     (async () => {
       try { const d = await patientApi.getById(initial.id); if (mounted) setPatient(d); }
+      catch (e) { console.log(e.message); }
+      try { const v = await patientApi.getVisits(initial.id); if (mounted) setVisits(v); }
       catch (e) { console.log(e.message); }
     })();
     return () => { mounted = false; };
@@ -67,6 +70,13 @@ export default function PatientDetailScreen({ route, navigation }) {
   const handleRestore = async () => {
     try { setLoading(true); const p = await patientApi.restore(patient.id); setPatient(p); Alert.alert('Restored', 'Patient has been restored.'); }
     catch (e) { Alert.alert('Error', e.message); } finally { setLoading(false); }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   const gs = getGenderStyle(patient.gender);
@@ -110,6 +120,30 @@ export default function PatientDetailScreen({ route, navigation }) {
         <Section title="Medical Records">
           <Row icon="🩸" label="Blood Group" value={patient.bloodGroup} />
           <Row icon="📋" label="History" value={patient.medicalHistory} />
+        </Section>
+
+        <Section title="Medical History">
+          {visits.length === 0 ? (
+            <Text style={styles.emptyText}>No visit history recorded</Text>
+          ) : (
+            <View style={styles.timeline}>
+              {visits.map((visit, index) => (
+                <View key={visit.id} style={styles.timelineItem}>
+                  <View style={styles.timelineLine}>
+                    <View style={styles.timelineDot} />
+                    {index < visits.length - 1 && <View style={styles.timelineConnector} />}
+                  </View>
+                  <View style={styles.visitCard}>
+                    <Text style={styles.visitDate}>{formatDate(visit.visitDate)}</Text>
+                    <Text style={styles.visitDoctor}>{visit.doctorName}</Text>
+                    <Text style={styles.visitDiagnosis}>{visit.diagnosis}</Text>
+                    {visit.prescription ? <Text style={styles.visitPrescription}>Rx: {visit.prescription}</Text> : null}
+                    {visit.additionalNotes ? <Text style={styles.visitNotes}>{visit.additionalNotes}</Text> : null}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </Section>
 
         <Section title="Emergency Contact">
@@ -156,6 +190,18 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
   rowValue: { fontSize: 13, color: colors.text, fontWeight: '600', textAlign: 'right' },
   footer: { flexDirection: 'row', padding: 16, gap: 8, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.borderLight },
+  emptyText: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic', textAlign: 'center', paddingVertical: 16 },
+  timeline: { paddingLeft: 4 },
+  timelineItem: { flexDirection: 'row', paddingBottom: 4 },
+  timelineLine: { width: 24, alignItems: 'center', paddingTop: 4 },
+  timelineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary, borderWidth: 2, borderColor: colors.primaryLight },
+  timelineConnector: { width: 2, flex: 1, backgroundColor: colors.border, marginTop: 4 },
+  visitCard: { flex: 1, backgroundColor: colors.bg, borderRadius: borderRadius.md, padding: 12, marginLeft: 8, marginBottom: 12 },
+  visitDate: { fontSize: 11, fontWeight: '700', color: colors.primary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  visitDoctor: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 4 },
+  visitDiagnosis: { fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: 2 },
+  visitPrescription: { fontSize: 12, fontWeight: '500', color: colors.text, marginTop: 4 },
+  visitNotes: { fontSize: 12, fontStyle: 'italic', color: colors.textSecondary, marginTop: 4 },
   editBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', ...shadows.sm },
   archiveBtn: { flex: 1, backgroundColor: colors.warningLight, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: '#FDE68A' },
   restoreBtn: { flex: 1, backgroundColor: colors.success, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center' },

@@ -1,9 +1,11 @@
 package com.Clinc_Flow.Clinic.doctor;
 
+import com.Clinc_Flow.Clinic.config.JwtUserDetails;
 import com.Clinc_Flow.Clinic.doctor.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -47,6 +49,17 @@ public class DoctorController {
     public ResponseEntity<Void> deleteDoctor(@PathVariable Long id) {
         doctorService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/profile")
+    public ResponseEntity<DoctorResponse> updateProfile(
+            @PathVariable Long id,
+            @Valid @RequestBody DoctorRequest request) {
+        JwtUserDetails user = (JwtUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (!user.userId().equals(id)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(doctorService.update(id, request));
     }
 
     @GetMapping("/search")

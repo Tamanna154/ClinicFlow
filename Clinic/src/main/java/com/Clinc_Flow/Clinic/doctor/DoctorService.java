@@ -2,6 +2,8 @@ package com.Clinc_Flow.Clinic.doctor;
 
 import com.Clinc_Flow.Clinic.doctor.dto.*;
 import com.Clinc_Flow.Clinic.exception.ResourceNotFoundException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +51,7 @@ public class DoctorService {
                 .consultationFee(request.getConsultationFee())
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .googleCalendarEnabled(request.getGoogleCalendarEnabled() != null ? request.getGoogleCalendarEnabled() : false)
+                .achievements(toAchievementsJson(request.getAchievements()))
                 .build();
         return DoctorResponse.fromEntity(doctorRepository.save(doctor));
     }
@@ -69,6 +72,7 @@ public class DoctorService {
         doctor.setConsultationFee(request.getConsultationFee());
         doctor.setIsActive(request.getIsActive() != null ? request.getIsActive() : doctor.getIsActive());
         doctor.setGoogleCalendarEnabled(request.getGoogleCalendarEnabled() != null ? request.getGoogleCalendarEnabled() : doctor.getGoogleCalendarEnabled());
+        doctor.setAchievements(toAchievementsJson(request.getAchievements()));
         return DoctorResponse.fromEntity(doctorRepository.save(doctor));
     }
 
@@ -93,5 +97,14 @@ public class DoctorService {
         return doctors.stream()
                 .map(DoctorResponse::fromEntity)
                 .toList();
+    }
+
+    private String toAchievementsJson(List<AchievementDto> achievements) {
+        if (achievements == null) return "[]";
+        try {
+            return new ObjectMapper().writeValueAsString(achievements);
+        } catch (JsonProcessingException e) {
+            return "[]";
+        }
     }
 }

@@ -47,6 +47,7 @@ public class PatientService {
                 .emergencyContactName(request.getEmergencyContactName())
                 .emergencyContactPhone(request.getEmergencyContactPhone())
                 .archived(false)
+                .assignedDoctorId(request.getAssignedDoctorId())
                 .createdByType(request.getCreatedByType())
                 .createdById(request.getCreatedById())
                 .createdByName(request.getCreatedByName())
@@ -69,6 +70,7 @@ public class PatientService {
         patient.setAllergies(request.getAllergies());
         patient.setEmergencyContactName(request.getEmergencyContactName());
         patient.setEmergencyContactPhone(request.getEmergencyContactPhone());
+        patient.setAssignedDoctorId(request.getAssignedDoctorId());
         return PatientResponse.fromEntity(patientRepository.save(patient));
     }
 
@@ -94,6 +96,20 @@ public class PatientService {
                 .orElseThrow(() -> new ResourceNotFoundException("Patient", id));
         patient.setArchived(false);
         return PatientResponse.fromEntity(patientRepository.save(patient));
+    }
+
+    @Transactional(readOnly = true)
+    public List<PatientResponse> findAllByAssignedDoctor(Long doctorId) {
+        return patientRepository.findByAssignedDoctorId(doctorId).stream()
+                .map(PatientResponse::fromEntity)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PatientResponse> findAllUnassigned() {
+        return patientRepository.findByAssignedDoctorIdIsNull().stream()
+                .map(PatientResponse::fromEntity)
+                .toList();
     }
 
     @Transactional(readOnly = true)

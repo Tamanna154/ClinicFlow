@@ -3,6 +3,7 @@ package com.Clinc_Flow.Clinic.reminder;
 import com.Clinc_Flow.Clinic.appointment.Appointment;
 import com.Clinc_Flow.Clinic.appointment.AppointmentRepository;
 import com.Clinc_Flow.Clinic.exception.ResourceNotFoundException;
+import com.Clinc_Flow.Clinic.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ public class ReminderService {
 
     private final ReminderRepository reminderRepository;
     private final AppointmentRepository appointmentRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public Reminder createFromAppointment(Long appointmentId, int hoursBefore) {
@@ -40,7 +42,24 @@ public class ReminderService {
                 .sent(false)
                 .sendSms(true)
                 .build();
-        return reminderRepository.save(reminder);
+        reminderRepository.save(reminder);
+
+        Reminder whatsAppReminder = Reminder.builder()
+                .appointmentId(appointmentId)
+                .patientId(appointment.getPatient().getId())
+                .patientName(appointment.getPatient().getName())
+                .patientPhone(appointment.getPatient().getPhone())
+                .doctorName(appointment.getDoctor().getName())
+                .appointmentDateTime(aptTime)
+                .reminderTime(remindAt)
+                .message(String.format("WhatsApp Reminder: Your appointment with Dr. %s is on %s at %s",
+                        appointment.getDoctor().getName(),
+                        appointment.getAppointmentDate(),
+                        appointment.getStartTime()))
+                .sent(false)
+                .sendSms(false)
+                .build();
+        return reminderRepository.save(whatsAppReminder);
     }
 
     @Transactional(readOnly = true)
@@ -54,8 +73,17 @@ public class ReminderService {
                 .findBySentFalseAndReminderTimeBefore(LocalDateTime.now());
         for (Reminder r : pending) {
             try {
-                if (r.getSendSms()) {
-                    log.info("SENDING SMS to {}: {}", r.getPatientPhone(), r.getMessage());
+                try {
+                    if (r.getSendSms()) {
+                        notificationService.sendSms(r.getPatientPhone(), r.getMessage());
+                    } else {
+                        notificationService.sendWhatsApp(r.getPatientPhone(), r.getMessage());
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to send {} to {}: {}",
+                            r.getSendSms() ? "SMS" : "WhatsApp", r.getPatientPhone(), e.getMessage());
+                    log.info("FALLBACK SENDING {} to {}: {}", r.getSendSms() ? "SMS" : "WhatsApp",
+                            r.getPatientPhone(), r.getMessage());
                 }
                 r.setSent(true);
                 reminderRepository.save(r);

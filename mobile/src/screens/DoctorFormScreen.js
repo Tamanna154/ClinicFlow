@@ -22,12 +22,30 @@ export default function DoctorFormScreen({ route, navigation }) {
     googleCalendarEnabled: existing?.googleCalendarEnabled ?? false,
   });
 
+  const [achievements, setAchievements] = useState(
+    existing?.achievements?.length ? existing.achievements.map(a => ({ ...a })) : []
+  );
+
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
 
   const updateField = (key, value) => {
     setForm({ ...form, [key]: value });
     if (errors[key]) setErrors({ ...errors, [key]: undefined });
+  };
+
+  const updateAchievement = (index, key, value) => {
+    const updated = [...achievements];
+    updated[index] = { ...updated[index], [key]: value };
+    setAchievements(updated);
+  };
+
+  const addAchievement = () => {
+    setAchievements([...achievements, { title: '', year: '', description: '' }]);
+  };
+
+  const removeAchievement = (index) => {
+    setAchievements(achievements.filter((_, i) => i !== index));
   };
 
   const validate = () => {
@@ -50,6 +68,7 @@ export default function DoctorFormScreen({ route, navigation }) {
         specialization: form.specialization.trim() || null, qualifications: form.qualifications.trim() || null,
         bio: form.bio.trim() || null, consultationFee: form.consultationFee ? parseFloat(form.consultationFee) : null,
         isActive: form.isActive, googleCalendarEnabled: form.googleCalendarEnabled,
+        achievements: achievements.filter(a => a.title.trim()),
       };
       if (isEdit) await doctorApi.update(existing.id, payload);
       else await doctorApi.create(payload);
@@ -86,6 +105,36 @@ export default function DoctorFormScreen({ route, navigation }) {
           <Field label="Bio">
             <TextInput style={[styles.input, styles.multiline]} value={form.bio} onChangeText={(v) => updateField('bio', v)} placeholder="About the doctor..." placeholderTextColor={colors.textMuted} multiline numberOfLines={4} />
           </Field>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Achievements</Text>
+          {achievements.map((ach, idx) => (
+            <View key={idx} style={styles.achievementEntry}>
+              <View style={styles.achievementHeader}>
+                <Text style={styles.achievementIndex}>#{idx + 1}</Text>
+                <TouchableOpacity onPress={() => removeAchievement(idx)} style={styles.removeBtn}>
+                  <Text style={styles.removeBtnText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <Field label="Title">
+                <TextInput style={styles.input} value={ach.title} onChangeText={(v) => updateAchievement(idx, 'title', v)} placeholder="e.g. Best Doctor Award" placeholderTextColor={colors.textMuted} />
+              </Field>
+              <Field label="Year">
+                <TextInput style={styles.input} value={ach.year} onChangeText={(v) => updateAchievement(idx, 'year', v)} placeholder="e.g. 2024" placeholderTextColor={colors.textMuted} keyboardType="number-pad" />
+              </Field>
+              <Field label="Description">
+                <TextInput style={[styles.input, styles.multiline]} value={ach.description} onChangeText={(v) => updateAchievement(idx, 'description', v)} placeholder="Brief description..." placeholderTextColor={colors.textMuted} multiline numberOfLines={2} />
+              </Field>
+            </View>
+          ))}
+          <TouchableOpacity style={styles.addAchievementBtn} onPress={addAchievement}>
+            <Text style={styles.addAchievementText}>+ Add Achievement</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Fee</Text>
           <Field label="Consultation Fee (₹)" error={errors.consultationFee}>
             <TextInput style={[styles.input, errors.consultationFee && styles.inputError]} value={form.consultationFee} onChangeText={(v) => updateField('consultationFee', v)} placeholder="e.g. 500" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" />
           </Field>
@@ -150,4 +199,11 @@ const styles = StyleSheet.create({
   toggleKnobActive: { alignSelf: 'flex-end' },
   saveBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 16, alignItems: 'center', ...shadows.md },
   saveBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  achievementEntry: { backgroundColor: colors.bg, borderRadius: borderRadius.sm, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: colors.borderLight },
+  achievementHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  achievementIndex: { fontSize: 11, fontWeight: '700', color: colors.textMuted },
+  removeBtn: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.error + '15', justifyContent: 'center', alignItems: 'center' },
+  removeBtnText: { fontSize: 11, color: colors.error, fontWeight: '700' },
+  addAchievementBtn: { borderWidth: 1, borderStyle: 'dashed', borderColor: colors.primary, borderRadius: borderRadius.sm, paddingVertical: 10, alignItems: 'center', marginTop: 4 },
+  addAchievementText: { fontSize: 13, fontWeight: '700', color: colors.primary },
 });

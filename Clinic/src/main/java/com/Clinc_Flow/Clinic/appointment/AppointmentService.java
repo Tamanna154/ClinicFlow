@@ -4,15 +4,23 @@ import com.Clinc_Flow.Clinic.appointment.dto.*;
 import com.Clinc_Flow.Clinic.appointment.google.GoogleCalendarService;
 import com.Clinc_Flow.Clinic.doctor.Doctor;
 import com.Clinc_Flow.Clinic.doctor.DoctorRepository;
+import com.Clinc_Flow.Clinic.doctor.availability.DoctorAvailability;
+import com.Clinc_Flow.Clinic.doctor.availability.DoctorAvailabilityRepository;
 import com.Clinc_Flow.Clinic.exception.ResourceNotFoundException;
 import com.Clinc_Flow.Clinic.patient.Patient;
 import com.Clinc_Flow.Clinic.patient.PatientRepository;
+import com.Clinc_Flow.Clinic.patient.PatientVisitService;
+import com.Clinc_Flow.Clinic.patient.dto.PatientVisitRequest;
+import com.Clinc_Flow.Clinic.reminder.ReminderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +30,10 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final DoctorRepository doctorRepository;
     private final PatientRepository patientRepository;
+    private final DoctorAvailabilityRepository availabilityRepository;
     private final GoogleCalendarService googleCalendarService;
+    private final PatientVisitService patientVisitService;
+    private final ReminderService reminderService;
 
     @Transactional(readOnly = true)
     public List<AppointmentResponse> findAll() {
@@ -77,12 +88,36 @@ public class AppointmentService {
             throw new IllegalArgumentException("Start time must be before end time");
         }
 
+        String dayOfWeek = request.getAppointmentDate().getDayOfWeek().name();
+        Optional<DoctorAvailability> avail = availabilityRepository
+                .findByDoctorIdAndDayOfWeek(request.getDoctorId(), dayOfWeek);
+
+        boolean inAvailability = avail
+                .filter(DoctorAvailability::getIsAvailable)
+                .filter(a -> !request.getStartTime().isBefore(a.getStartTime())
+                          && !request.getEndTime().isAfter(a.getEndTime()))
+                .isPresent();
+
+        if (!inAvailability) {
+            StringBuilder msg = new StringBuilder("Requested time is outside the doctor's availability");
+            avail.filter(DoctorAvailability::getIsAvailable).ifPresent(a ->
+                    msg.append(" (available: ").append(a.getStartTime()).append("-").append(a.getEndTime()).append(")"));
+            throw new IllegalArgumentException(msg.toString());
+        }
+
         List<Appointment> conflicts = appointmentRepository
                 .findByDoctorIdAndAppointmentDateAndStartTimeLessThanEqualAndEndTimeGreaterThanEqual(
                         request.getDoctorId(), request.getAppointmentDate(),
                         request.getEndTime(), request.getStartTime());
         if (!conflicts.isEmpty()) {
-            throw new IllegalArgumentException("Time slot overlaps with an existing appointment");
+            List<String> suggestions = findAlternativeSlots(
+                    request.getDoctorId(), request.getAppointmentDate(),
+                    request.getStartTime(), request.getEndTime());
+            String msg = "Time slot overlaps with an existing appointment";
+            if (!suggestions.isEmpty()) {
+                msg += ". Available alternatives: " + String.join(", ", suggestions);
+            }
+            throw new IllegalArgumentException(msg);
         }
 
         Boolean isOnline = request.getIsOnline() != null && request.getIsOnline();
@@ -128,6 +163,15 @@ public class AppointmentService {
         String oldStatus = appointment.getStatus();
         appointment.setStatus(status.toUpperCase());
         appointment = appointmentRepository.save(appointment);
+
+        if (status.equalsIgnoreCase("CONFIRMED") && !oldStatus.equalsIgnoreCase("CONFIRMED")) {
+            try {
+                reminderService.createFromAppointment(appointment.getId(), 24);
+                reminderService.createFromAppointment(appointment.getId(), 2);
+            } catch (Exception e) {
+                log.warn("Failed to create reminders for appointment {}: {}", appointment.getId(), e.getMessage());
+            }
+        }
 
         if (appointment.getGoogleEventId() != null && status.equalsIgnoreCase("CANCELLED")) {
             try {
@@ -217,7 +261,53 @@ public class AppointmentService {
                 (notes.getPrescription() != null ? "Prescription: " + notes.getPrescription() + "\n" : "") +
                 (notes.getAdditionalNotes() != null ? "Notes: " + notes.getAdditionalNotes() : ""));
         }
-        return AppointmentResponse.fromEntity(appointmentRepository.save(appointment));
+        appointment = appointmentRepository.save(appointment);
+
+        try {
+            PatientVisitRequest visitRequest = PatientVisitRequest.builder()
+                    .patientId(patient.getId())
+                    .diagnosis(notes.getDiagnosis())
+                    .prescription(notes.getPrescription())
+                    .additionalNotes(notes.getAdditionalNotes())
+                    .build();
+            patientVisitService.createVisit(visitRequest, appointment.getDoctor().getId(), appointment.getId());
+        } catch (Exception e) {
+            log.warn("Failed to create patient visit record: {}", e.getMessage());
+        }
+
+        return AppointmentResponse.fromEntity(appointment);
+    }
+
+    private List<String> findAlternativeSlots(Long doctorId, LocalDate date, LocalTime startTime, LocalTime endTime) {
+        String dayOfWeek = date.getDayOfWeek().name();
+        Optional<DoctorAvailability> avail = availabilityRepository
+                .findByDoctorIdAndDayOfWeek(doctorId, dayOfWeek);
+
+        List<String> alternatives = new ArrayList<>();
+        if (avail.isEmpty() || !avail.get().getIsAvailable()) return alternatives;
+
+        DoctorAvailability a = avail.get();
+        List<Appointment> bookings = appointmentRepository
+                .findByDoctorIdAndAppointmentDateOrderByStartTime(doctorId, date);
+
+        int duration = a.getSlotDuration() != null ? a.getSlotDuration() : 30;
+        LocalTime cursor = a.getStartTime();
+        while (cursor.plusMinutes(duration).isBefore(a.getEndTime())
+                || cursor.plusMinutes(duration).equals(a.getEndTime())) {
+            LocalTime slotEnd = cursor.plusMinutes(duration);
+            final LocalTime ss = cursor;
+            final LocalTime se = slotEnd;
+
+            boolean conflicts = bookings.stream().anyMatch(b ->
+                    !b.getStartTime().isAfter(ss) && !b.getEndTime().isBefore(se) ||
+                    (b.getStartTime().isBefore(se) && b.getEndTime().isAfter(ss)));
+
+            if (!conflicts) {
+                alternatives.add(ss.toString() + "-" + se.toString());
+            }
+            cursor = slotEnd;
+        }
+        return alternatives;
     }
 
     @Transactional

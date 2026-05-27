@@ -18,4 +18,8 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     List<Patient> findByNameContainingIgnoreCaseAndArchived(String name, Boolean archived);
 
     List<Patient> findByPhoneContainingAndArchived(String phone, Boolean archived);
+
+    List<Patient> findByAssignedDoctorId(Long doctorId);
+
+    List<Patient> findByAssignedDoctorIdIsNull();
 }

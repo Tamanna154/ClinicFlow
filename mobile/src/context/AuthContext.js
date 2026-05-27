@@ -2,18 +2,12 @@ import React, { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext(null);
 
-const DEFAULT_USER = {
-  id: 1,
-  name: 'Admin',
-  username: 'doctor@gmail.com',
-  role: 'DOCTOR',
-};
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(DEFAULT_USER);
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
 
   return (
-    <AuthContext.Provider value={{ user, setUser }}>
+    <AuthContext.Provider value={{ user, setUser, token, setToken }}>
       {children}
     </AuthContext.Provider>
   );

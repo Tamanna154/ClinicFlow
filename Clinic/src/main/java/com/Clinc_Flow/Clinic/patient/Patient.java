@@ -52,6 +52,9 @@ public class Patient {
     @Column(nullable = false)
     private Boolean archived = false;
 
+    @Column(name = "assigned_doctor_id")
+    private Long assignedDoctorId;
+
     @Column(name = "created_by_type", length = 20)
     private String createdByType;
 

@@ -3,6 +3,7 @@ package com.Clinc_Flow.Clinic.doctor.dto;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
 @Setter
@@ -37,4 +38,6 @@ public class DoctorRequest {
     private Boolean isActive;
 
     private Boolean googleCalendarEnabled;
+
+    private List<AchievementDto> achievements;
 }

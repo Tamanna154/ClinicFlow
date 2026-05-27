@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { authFetch } from './client';
 
 // Dynamic API Base URL with automated network probing
 let activeApiBase = 'http://10.96.167.83:8080/api'; // Fallback if probing fails
@@ -9,7 +10,7 @@ const probeUrl = async (url) => {
   try {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), PROBE_TIMEOUT);
-    const res = await fetch(`${url}/patients`, { signal: controller.signal });
+    const res = await authFetch(`${url}/patients`, { signal: controller.signal });
     clearTimeout(id);
     // 200 OK or other successful status means server is reachable
     return res.ok || res.status === 200;
@@ -78,21 +79,21 @@ export const patientApi = {
   async getAll(archived) {
     const apiBase = await getApiBase();
     const params = archived ? `?archived=${archived}` : '';
-    const res = await fetch(`${apiBase}/patients${params}`);
+    const res = await authFetch(`${apiBase}/patients${params}`);
     if (!res.ok) throw new Error('Failed to fetch patients');
     return res.json();
   },
 
   async getById(id) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/patients/${id}`);
+    const res = await authFetch(`${apiBase}/patients/${id}`);
     if (!res.ok) throw new Error('Patient not found');
     return res.json();
   },
 
   async create(patient) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/patients`, {
+    const res = await authFetch(`${apiBase}/patients`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patient),
@@ -113,7 +114,7 @@ export const patientApi = {
 
   async update(id, patient) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/patients/${id}`, {
+    const res = await authFetch(`${apiBase}/patients/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patient),
@@ -134,22 +135,29 @@ export const patientApi = {
 
   async delete(id) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/patients/${id}`, {
+    const res = await authFetch(`${apiBase}/patients/${id}`, {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete patient');
   },
 
+  async getVisits(patientId) {
+    const apiBase = await getApiBase();
+    const res = await authFetch(`${apiBase}/patients/${patientId}/visits`);
+    if (!res.ok) throw new Error('Failed to fetch visits');
+    return res.json();
+  },
+
   async archive(id) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/patients/${id}/archive`, { method: 'PATCH' });
+    const res = await authFetch(`${apiBase}/patients/${id}/archive`, { method: 'PATCH' });
     if (!res.ok) throw new Error('Failed to archive patient');
     return res.json();
   },
 
   async restore(id) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/patients/${id}/restore`, { method: 'PATCH' });
+    const res = await authFetch(`${apiBase}/patients/${id}/restore`, { method: 'PATCH' });
     if (!res.ok) throw new Error('Failed to restore patient');
     return res.json();
   },
