@@ -72,6 +72,18 @@ public class ScheduleController {
                     slot.put("endTime", se.toString());
                     slot.put("booked", booked);
                     slot.put("slotIndex", timeSlots.size() + 1);
+
+                    if (booked) {
+                        bookings.stream()
+                            .filter(b -> !b.getStartTime().isAfter(ss) && !b.getEndTime().isBefore(se) ||
+                                         (b.getStartTime().isBefore(se) && b.getEndTime().isAfter(ss)))
+                            .findFirst()
+                            .ifPresent(b -> {
+                                slot.put("appointmentId", b.getId());
+                                slot.put("patientName", b.getPatient().getName());
+                                slot.put("status", b.getStatus());
+                            });
+                    }
                     timeSlots.add(slot);
                     slotStart = slotEnd;
                 }

@@ -9,7 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -54,16 +55,16 @@ public class PatientVisitService {
 
     @Transactional(readOnly = true)
     public List<PatientVisitResponse> getVisitsByPatientId(Long patientId) {
-        return patientVisitRepository.findByPatientIdOrderByVisitDateDesc(patientId).stream()
-                .map(visit -> {
-                    String doctorName = null;
-                    if (visit.getDoctorId() != null) {
-                        doctorName = doctorRepository.findById(visit.getDoctorId())
-                                .map(Doctor::getName)
-                                .orElse(null);
-                    }
-                    return PatientVisitResponse.fromEntity(visit, doctorName);
-                })
+        List<PatientVisit> visits = patientVisitRepository.findByPatientIdOrderByVisitDateDesc(patientId);
+        List<Long> doctorIds = visits.stream()
+                .map(PatientVisit::getDoctorId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        java.util.Map<Long, String> doctorNames = doctorRepository.findAllById(doctorIds).stream()
+                .collect(java.util.stream.Collectors.toMap(Doctor::getId, Doctor::getName));
+        return visits.stream()
+                .map(visit -> PatientVisitResponse.fromEntity(visit, doctorNames.get(visit.getDoctorId())))
                 .toList();
     }
 }

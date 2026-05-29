@@ -2,6 +2,7 @@ package com.Clinc_Flow.Clinic.appointment.dto;
 
 import com.Clinc_Flow.Clinic.appointment.Appointment;
 import lombok.*;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -30,6 +31,10 @@ public class AppointmentResponse {
     private Boolean isOnline;
     private String meetingLink;
     private String consultationNotes;
+    private BigDecimal appointmentFee;
+    private String feePaymentMethod;
+    private String feePaymentStatus;
+    private OffsetDateTime feePaymentDate;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
@@ -52,6 +57,10 @@ public class AppointmentResponse {
                 .isOnline(appointment.getIsOnline())
                 .meetingLink(appointment.getMeetingLink())
                 .consultationNotes(appointment.getConsultationNotes())
+                .appointmentFee(appointment.getAppointmentFee())
+                .feePaymentMethod(appointment.getFeePaymentMethod())
+                .feePaymentStatus(appointment.getFeePaymentStatus())
+                .feePaymentDate(appointment.getFeePaymentDate())
                 .createdAt(appointment.getCreatedAt())
                 .updatedAt(appointment.getUpdatedAt())
                 .build();

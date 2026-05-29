@@ -1,5 +1,7 @@
 package com.Clinc_Flow.Clinic.patient;
 
+import com.Clinc_Flow.Clinic.billing.BillRepository;
+import com.Clinc_Flow.Clinic.billing.dto.BillResponse;
 import com.Clinc_Flow.Clinic.config.JwtUserDetails;
 import com.Clinc_Flow.Clinic.patient.dto.*;
 import jakarta.validation.Valid;
@@ -18,6 +20,7 @@ public class PatientController {
 
     private final PatientService patientService;
     private final PatientVisitService patientVisitService;
+    private final BillRepository billRepository;
 
     @GetMapping
     public ResponseEntity<List<PatientResponse>> getAllPatients(
@@ -70,6 +73,20 @@ public class PatientController {
     @PreAuthorize("hasAnyRole('DOCTOR', 'RECEPTIONIST')")
     public ResponseEntity<List<PatientResponse>> getUnassignedPatients() {
         return ResponseEntity.ok(patientService.findAllUnassigned());
+    }
+
+    @GetMapping("/{id}/bills")
+    public ResponseEntity<List<BillResponse>> getPatientBills(@PathVariable Long id) {
+        List<BillResponse> bills = billRepository.findByPatientIdOrderByCreatedAtDesc(id).stream()
+                .map(BillResponse::fromEntity)
+                .toList();
+        try {
+            PatientResponse patient = patientService.findById(id);
+            String name = patient.getName();
+            String phone = patient.getPhone();
+            bills.forEach(b -> { b.setPatientName(name); b.setPatientPhone(phone); });
+        } catch (Exception ignored) {}
+        return ResponseEntity.ok(bills);
     }
 
     @GetMapping("/{id}/visits")

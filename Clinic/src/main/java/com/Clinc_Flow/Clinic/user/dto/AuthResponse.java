@@ -1,6 +1,7 @@
 package com.Clinc_Flow.Clinic.user.dto;
 
 import lombok.*;
+import java.util.List;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class AuthResponse {
@@ -11,4 +12,5 @@ public class AuthResponse {
     private String role;
     private Long doctorId;
     private Long patientId;
+    private List<String> permissions;
 }

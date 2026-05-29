@@ -4,6 +4,7 @@ import com.Clinc_Flow.Clinic.doctor.Doctor;
 import com.Clinc_Flow.Clinic.patient.Patient;
 import jakarta.persistence.*;
 import lombok.*;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -59,6 +60,18 @@ public class Appointment {
 
     @Column(name = "consultation_notes", columnDefinition = "TEXT")
     private String consultationNotes;
+
+    @Column(name = "appointment_fee", precision = 12, scale = 2)
+    private BigDecimal appointmentFee;
+
+    @Column(name = "fee_payment_method", length = 20)
+    private String feePaymentMethod;
+
+    @Column(name = "fee_payment_status", length = 20)
+    private String feePaymentStatus;
+
+    @Column(name = "fee_payment_date")
+    private OffsetDateTime feePaymentDate;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
