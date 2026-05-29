@@ -14,8 +14,13 @@ public class PatientService {
     private final PatientRepository patientRepository;
 
     @Transactional(readOnly = true)
-    public List<PatientResponse> findAll() {
-        return patientRepository.findAll().stream()
+    public List<PatientResponse> findAll(Boolean archived) {
+        if (archived != null) {
+            return patientRepository.findByArchived(archived).stream()
+                    .map(PatientResponse::fromEntity)
+                    .toList();
+        }
+        return patientRepository.findByArchivedFalse().stream()
                 .map(PatientResponse::fromEntity)
                 .toList();
     }
@@ -41,6 +46,11 @@ public class PatientService {
                 .allergies(request.getAllergies())
                 .emergencyContactName(request.getEmergencyContactName())
                 .emergencyContactPhone(request.getEmergencyContactPhone())
+                .archived(false)
+                .assignedDoctorId(request.getAssignedDoctorId())
+                .createdByType(request.getCreatedByType())
+                .createdById(request.getCreatedById())
+                .createdByName(request.getCreatedByName())
                 .build();
         return PatientResponse.fromEntity(patientRepository.save(patient));
     }
@@ -60,6 +70,7 @@ public class PatientService {
         patient.setAllergies(request.getAllergies());
         patient.setEmergencyContactName(request.getEmergencyContactName());
         patient.setEmergencyContactPhone(request.getEmergencyContactPhone());
+        patient.setAssignedDoctorId(request.getAssignedDoctorId());
         return PatientResponse.fromEntity(patientRepository.save(patient));
     }
 
@@ -71,15 +82,53 @@ public class PatientService {
         patientRepository.deleteById(id);
     }
 
+    @Transactional
+    public PatientResponse archive(Long id) {
+        Patient patient = patientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient", id));
+        patient.setArchived(true);
+        return PatientResponse.fromEntity(patientRepository.save(patient));
+    }
+
+    @Transactional
+    public PatientResponse restore(Long id) {
+        Patient patient = patientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient", id));
+        patient.setArchived(false);
+        return PatientResponse.fromEntity(patientRepository.save(patient));
+    }
+
     @Transactional(readOnly = true)
-    public List<PatientResponse> search(String query) {
+    public List<PatientResponse> findAllByAssignedDoctor(Long doctorId) {
+        return patientRepository.findByAssignedDoctorId(doctorId).stream()
+                .map(PatientResponse::fromEntity)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PatientResponse> findAllUnassigned() {
+        return patientRepository.findByAssignedDoctorIdIsNull().stream()
+                .map(PatientResponse::fromEntity)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PatientResponse> search(String query, Boolean archived) {
         if (query == null || query.trim().isEmpty()) {
-            return findAll();
+            return findAll(archived);
         }
         String trimmed = query.trim();
-        List<Patient> patients = patientRepository.findByNameContainingIgnoreCase(trimmed);
-        if (patients.isEmpty()) {
-            patients = patientRepository.findByPhoneContaining(trimmed);
+        List<Patient> patients;
+        if (archived != null) {
+            patients = patientRepository.findByNameContainingIgnoreCaseAndArchived(trimmed, archived);
+            if (patients.isEmpty()) {
+                patients = patientRepository.findByPhoneContainingAndArchived(trimmed, archived);
+            }
+        } else {
+            patients = patientRepository.findByNameContainingIgnoreCaseAndArchived(trimmed, false);
+            if (patients.isEmpty()) {
+                patients = patientRepository.findByPhoneContainingAndArchived(trimmed, false);
+            }
         }
         return patients.stream()
                 .map(PatientResponse::fromEntity)

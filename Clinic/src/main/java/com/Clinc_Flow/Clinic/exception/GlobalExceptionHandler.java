@@ -1,11 +1,14 @@
 package com.Clinc_Flow.Clinic.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import java.time.OffsetDateTime;
 import java.util.*;
+
+@Slf4j
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -31,8 +34,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleBadRequest(IllegalArgumentException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", OffsetDateTime.now());
+        body.put("status", 400);
+        body.put("error", ex.getMessage());
+        return ResponseEntity.badRequest().body(body);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
+        log.error("Unhandled exception", ex);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", OffsetDateTime.now());
         body.put("status", 500);

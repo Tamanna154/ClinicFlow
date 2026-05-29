@@ -23,6 +23,11 @@ public class PatientResponse {
     private String allergies;
     private String emergencyContactName;
     private String emergencyContactPhone;
+    private Boolean archived;
+    private Long assignedDoctorId;
+    private String createdByType;
+    private Long createdById;
+    private String createdByName;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
@@ -102,6 +107,11 @@ public class PatientResponse {
                 .allergies(patient.getAllergies())
                 .emergencyContactName(patient.getEmergencyContactName())
                 .emergencyContactPhone(patient.getEmergencyContactPhone())
+                .archived(patient.getArchived())
+                .assignedDoctorId(patient.getAssignedDoctorId())
+                .createdByType(patient.getCreatedByType())
+                .createdById(patient.getCreatedById())
+                .createdByName(patient.getCreatedByName())
                 .createdAt(patient.getCreatedAt())
                 .updatedAt(patient.getUpdatedAt())
                 .build();
