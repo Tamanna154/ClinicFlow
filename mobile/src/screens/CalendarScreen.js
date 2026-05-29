@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, RefreshControl, Dimensions,
+  ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { doctorApi } from '../api/doctorApi';
@@ -9,12 +9,10 @@ import { scheduleApi } from '../api/scheduleApi';
 import { colors, borderRadius, shadows } from '../theme';
 
 const VIEWS = ['daily', 'weekly', 'monthly'];
-const HOURS = ['08','09','10','11','12','13','14','15','16','17','18','19','20'];
-const SLOT_WIDTH = Dimensions.get('window').width - 70;
 
 function todayStr() {
   const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
 function formatDate(d) {
@@ -42,7 +40,7 @@ export default function CalendarScreen({ navigation }) {
       if (isRefresh) setRefreshing(true); else setLoading(true);
       const data = await scheduleApi.get(selectedDoctor.id, currentDate, view);
       setSchedule(data);
-    } catch (e) { console.log(e.message); }
+    } catch (e) { Alert.alert('Error', 'Failed to load schedule.'); }
     finally { setLoading(false); setRefreshing(false); }
   };
 
@@ -50,125 +48,155 @@ export default function CalendarScreen({ navigation }) {
   useFocusEffect(useCallback(() => { if (selectedDoctor) fetchSchedule(); }, [selectedDoctor, currentDate, view]));
 
   const navigateDate = (dir) => {
-    const d = new Date(currentDate);
+    const d = new Date(currentDate + 'T00:00:00');
     if (view === 'daily') d.setDate(d.getDate() + dir);
     else if (view === 'weekly') d.setDate(d.getDate() + 7 * dir);
     else d.setMonth(d.getMonth() + dir);
-    setCurrentDate(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+    setCurrentDate(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
   };
 
-  const goToday = () => setCurrentDate(todayStr());
+  const isToday = currentDate === todayStr();
+  const scheduleDays = schedule?.days || [];
+  const scheduleEntries = view === 'daily' && scheduleDays.length > 0
+    ? (scheduleDays[0].slots || [])
+    : scheduleDays;
 
-  const getSlotForTime = (daySlots, hour) => {
-    if (!daySlots) return null;
-    return daySlots.find(s => s.startTime?.startsWith(hour));
-  };
-
-  const handleBookFromCalendar = (slot) => {
-    if (!slot.booked && selectedDoctor) {
-      navigation.navigate('CalendarBooking', {
-        doctorId: selectedDoctor.id,
-        doctorName: selectedDoctor.name,
-        prefillDate: currentDate,
-        prefillStart: slot.startTime?.slice(0,5),
-        prefillEnd: slot.endTime?.slice(0,5),
-      });
+  const renderSlots = () => {
+    if (!schedule || scheduleEntries.length === 0) {
+      return (
+        <View style={styles.emptyState}>
+          <View style={styles.emptyCircle}><Text style={styles.emptyIcon}>☰</Text></View>
+          <Text style={styles.emptyTitle}>No schedule available</Text>
+          <Text style={styles.emptySub}>Select a different date or doctor</Text>
+        </View>
+      );
     }
+
+    if (view === 'daily') {
+      return (
+        <View style={styles.timeline}>
+          {scheduleEntries.map((entry, idx) => {
+            const isBooked = entry.booked === true || !!entry.appointmentId;
+            return (
+              <TouchableOpacity
+                key={idx}
+                style={[styles.timeSlot, isBooked && styles.timeSlotBooked]}
+                onPress={() => {
+                  if (entry.appointmentId) navigation.navigate('AppointmentDetail', { appointment: { id: entry.appointmentId } });
+                  else navigation.navigate('CalendarBooking', { doctorId: selectedDoctor?.id, date: currentDate, startTime: entry.startTime });
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.slotTime}>{entry.startTime}</Text>
+                <View style={styles.slotLine}>
+                  <View style={[styles.slotDot, isBooked && styles.slotDotBooked]} />
+                  <View style={[styles.slotBar, isBooked && styles.slotBarBooked]} />
+                </View>
+                <View style={styles.slotInfo}>
+                  {isBooked ? (
+                    <>
+                      <Text style={styles.slotPatient} numberOfLines={1}>{entry.patientName || 'Booked'}</Text>
+                      <Text style={styles.slotEnd}>{entry.endTime}</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.slotAvailable}>Available</Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.weekGrid}>
+        {scheduleEntries.map((entry, idx) => {
+          const d = new Date(entry.date + 'T00:00:00');
+          const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          const busy = entry.bookedSlots > 0;
+          const full = entry.totalSlots > 0 && entry.bookedSlots >= entry.totalSlots;
+          return (
+            <TouchableOpacity
+              key={idx}
+              style={[styles.weekCard, busy && styles.weekCardBusy, full && styles.weekCardFull]}
+              onPress={() => { setCurrentDate(entry.date); setView('daily'); }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.weekDay}>{dayLabel}</Text>
+              <View style={styles.weekStats}>
+                <Text style={[styles.weekCount, busy && styles.weekCountBusy]}>
+                  {entry.bookedSlots}/{entry.totalSlots} booked
+                </Text>
+                <View style={[styles.weekBar, { backgroundColor: colors.borderLight }]}>
+                  <View style={[styles.weekBarFill, {
+                    width: entry.totalSlots > 0 ? `${(entry.bookedSlots / entry.totalSlots) * 100}%` : '0%',
+                    backgroundColor: full ? colors.error : busy ? colors.primary : colors.success,
+                  }]} />
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
   };
 
   return (
     <View style={styles.container}>
-      {/* Doctor Strip */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.docStrip} contentContainerStyle={styles.docStripContent}>
-        {doctors.map((d) => (
-          <TouchableOpacity key={d.id} style={[styles.docChip, selectedDoctor?.id === d.id && styles.docChipActive]}
-            onPress={() => { setSelectedDoctor(d); setCurrentDate(todayStr()); }}>
-            <Text style={[styles.docChipName, selectedDoctor?.id === d.id && styles.docChipNameActive]}>Dr. {d.name}</Text>
-            <Text style={[styles.docChipSpec, selectedDoctor?.id === d.id && styles.docChipSpecActive]}>{d.specialization || 'General'}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Controls */}
-      <View style={styles.controls}>
-        <View style={styles.viewRow}>
-          {VIEWS.map((v) => (
-            <TouchableOpacity key={v} style={[styles.viewTab, view === v && styles.viewTabActive]}
-              onPress={() => setView(v)}>
-              <Text style={[styles.viewTabText, view === v && styles.viewTabTextActive]}>{v.charAt(0).toUpperCase()+v.slice(1)}</Text>
+      <View style={styles.doctorBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.doctorList}>
+          {doctors.map((doc) => (
+            <TouchableOpacity
+              key={doc.id}
+              style={[styles.doctorChip, selectedDoctor?.id === doc.id && styles.doctorChipActive]}
+              onPress={() => setSelectedDoctor(doc)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.doctorChipText, selectedDoctor?.id === doc.id && styles.doctorChipTextActive]}>
+                Dr. {doc.name?.split(' ')[0]}
+              </Text>
             </TouchableOpacity>
           ))}
-        </View>
-        <View style={styles.dateRow}>
-          <TouchableOpacity onPress={() => navigateDate(-1)} style={styles.navBtn}><Text style={styles.navBtnText}>‹</Text></TouchableOpacity>
-          <TouchableOpacity onPress={goToday}><Text style={styles.dateLabel}>{formatDate(currentDate)}</Text></TouchableOpacity>
-          <TouchableOpacity onPress={() => navigateDate(1)} style={styles.navBtn}><Text style={styles.navBtnText}>›</Text></TouchableOpacity>
-        </View>
+        </ScrollView>
       </View>
 
-      {/* Legend */}
-      <View style={styles.legend}>
-        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.success }]} /><Text style={styles.legendText}>Available</Text></View>
-        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.error }]} /><Text style={styles.legendText}>Booked</Text></View>
-        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.bg }]} /><Text style={styles.legendText}>No Slot</Text></View>
+      <View style={styles.dateNav}>
+        <TouchableOpacity onPress={() => navigateDate(-1)} style={styles.navBtn} activeOpacity={0.6}>
+          <Text style={styles.navBtnText}>‹</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setCurrentDate(todayStr())} style={styles.dateLabel} activeOpacity={0.7}>
+          <Text style={styles.dateText}>{formatDate(currentDate)}</Text>
+          {!isToday && <Text style={styles.todayLink}>Today</Text>}
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigateDate(1)} style={styles.navBtn} activeOpacity={0.6}>
+          <Text style={styles.navBtnText}>›</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Time Grid */}
+      <View style={styles.viewBar}>
+        {VIEWS.map((v) => (
+          <TouchableOpacity
+            key={v}
+            style={[styles.viewChip, view === v && styles.viewChipActive]}
+            onPress={() => setView(v)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.viewChipText, view === v && styles.viewChipTextActive]}>{v.charAt(0).toUpperCase() + v.slice(1)}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {loading ? (
-        <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
       ) : (
         <ScrollView
-          style={styles.gridContainer}
+          contentContainerStyle={styles.scheduleContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchSchedule(true)} tintColor={colors.primary} colors={[colors.primary]} />}
         >
-          {schedule?.days?.length > 0 ? schedule.days.map((day, di) => (
-            <View key={di} style={styles.daySection}>
-              <View style={styles.dayLabelRow}>
-                <Text style={styles.dayLabel}>{formatDate(day.date)}</Text>
-                <View style={styles.statsRow}>
-                  <Text style={[styles.statBadge, { backgroundColor: colors.successLight, color: colors.success }]}>
-                    {day.totalSlots - day.bookedSlots} free
-                  </Text>
-                  <Text style={[styles.statBadge, { backgroundColor: colors.errorLight, color: colors.error }]}>
-                    {day.bookedSlots} booked
-                  </Text>
-                </View>
-              </View>
-
-              {HOURS.map((hour) => {
-                const slot = getSlotForTime(day.slots, hour);
-                if (!slot) return (
-                  <View key={hour} style={styles.gridRow}>
-                    <View style={styles.timeLabel}><Text style={styles.timeText}>{hour}:00</Text></View>
-                    <View style={[styles.slotCell, styles.slotNone]}><Text style={styles.slotNoneText}>—</Text></View>
-                  </View>
-                );
-                const booked = slot.booked;
-                return (
-                  <TouchableOpacity key={hour} style={styles.gridRow} onPress={() => handleBookFromCalendar(slot)} disabled={booked} activeOpacity={0.7}>
-                    <View style={styles.timeLabel}><Text style={styles.timeText}>{hour}:00</Text></View>
-                    <View style={[styles.slotCell, booked ? styles.slotBooked : styles.slotFree]}>
-                      <View style={styles.slotContent}>
-                        <View style={styles.slotLeft}>
-                          <Text style={[styles.slotTimeRange, booked && { color: colors.error }]}>
-                            {slot.startTime?.slice(0,5)} - {slot.endTime?.slice(0,5)}
-                          </Text>
-                          <Text style={[styles.slotLabel, booked ? { color: colors.error } : { color: colors.success }]}>
-                            {booked ? `Slot #${slot.slotIndex || di+1} — Booked` : `Slot #${slot.slotIndex || di+1} — Free`}
-                          </Text>
-                        </View>
-                        <View style={[styles.statusIndicator, { backgroundColor: booked ? colors.error : colors.success }]} />
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )) : (
-            <View style={styles.center}>
-              <Text style={{ color: colors.textMuted, paddingVertical: 40 }}>Select a doctor to see schedule</Text>
-            </View>
-          )}
+          {renderSlots()}
         </ScrollView>
       )}
     </View>
@@ -177,46 +205,54 @@ export default function CalendarScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },
-  docStrip: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.borderLight, maxHeight: 68 },
-  docStripContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 6 },
-  docChip: { backgroundColor: colors.bg, borderRadius: borderRadius.md, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: colors.border, marginRight: 6, minWidth: 90 },
-  docChipActive: { backgroundColor: colors.primary + '15', borderColor: colors.primary },
-  docChipName: { fontSize: 12, fontWeight: '700', color: colors.text },
-  docChipNameActive: { color: colors.primary },
-  docChipSpec: { fontSize: 10, fontWeight: '500', color: colors.textMuted, marginTop: 1 },
-  docChipSpecActive: { color: colors.primaryLight },
-  controls: { backgroundColor: colors.surface, paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight, gap: 6 },
-  viewRow: { flexDirection: 'row', gap: 4 },
-  viewTab: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: borderRadius.sm, backgroundColor: colors.bg },
-  viewTabActive: { backgroundColor: colors.primary },
-  viewTabText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary },
-  viewTabTextActive: { color: '#FFFFFF' },
-  dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
-  navBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
-  navBtnText: { fontSize: 18, color: colors.primary, fontWeight: '700', lineHeight: 20 },
-  dateLabel: { fontSize: 14, fontWeight: '700', color: colors.text },
-  legend: { flexDirection: 'row', backgroundColor: colors.surface, paddingHorizontal: 16, paddingVertical: 6, gap: 16, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 10, fontWeight: '600', color: colors.textMuted },
-  gridContainer: { flex: 1 },
-  daySection: { margin: 8, backgroundColor: colors.surface, borderRadius: borderRadius.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm },
-  dayLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
-  dayLabel: { fontSize: 14, fontWeight: '700', color: colors.text },
-  statsRow: { flexDirection: 'row', gap: 6 },
-  statBadge: { fontSize: 10, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, overflow: 'hidden' },
-  gridRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.borderLight, minHeight: 48 },
-  timeLabel: { width: 54, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg + '80' },
-  timeText: { fontSize: 10, fontWeight: '600', color: colors.textMuted },
-  slotCell: { flex: 1, justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 6 },
-  slotNone: { backgroundColor: colors.bg },
-  slotNoneText: { fontSize: 12, color: colors.textMuted, textAlign: 'center' },
-  slotFree: { backgroundColor: colors.successLight },
-  slotBooked: { backgroundColor: colors.errorLight },
-  slotContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  slotLeft: { flex: 1 },
-  slotTimeRange: { fontSize: 12, fontWeight: '700', color: colors.text },
-  slotLabel: { fontSize: 10, fontWeight: '600', marginTop: 1 },
-  statusIndicator: { width: 8, height: 8, borderRadius: 4, marginLeft: 8 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  doctorBar: { backgroundColor: colors.surface, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  doctorList: { paddingHorizontal: 16, gap: 8 },
+  doctorChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: borderRadius.md, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border },
+  doctorChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  doctorChipText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  doctorChipTextActive: { color: '#FFFFFF' },
+  dateNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  navBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.border },
+  navBtnText: { fontSize: 20, color: colors.text, fontWeight: '700' },
+  dateLabel: { alignItems: 'center' },
+  dateText: { fontSize: 16, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
+  todayLink: { fontSize: 11, color: colors.primaryLight, fontWeight: '600', marginTop: 1 },
+  viewBar: { flexDirection: 'row', backgroundColor: colors.surface, paddingHorizontal: 16, paddingVertical: 8, gap: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  viewChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: borderRadius.md, backgroundColor: colors.bg },
+  viewChipActive: { backgroundColor: colors.primary + '12' },
+  viewChipText: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
+  viewChipTextActive: { color: colors.primary },
+  scheduleContent: { padding: 16, paddingBottom: 32 },
+  timeline: { gap: 2 },
+  timeSlot: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 4 },
+  timeSlotBooked: { opacity: 1 },
+  slotTime: { width: 52, fontSize: 12, fontWeight: '600', color: colors.textMuted, textAlign: 'right', marginRight: 12 },
+  slotLine: { alignItems: 'center', width: 20 },
+  slotDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
+  slotDotBooked: { backgroundColor: colors.primary },
+  slotBar: { width: 1, flex: 1, backgroundColor: colors.borderLight, marginTop: 2 },
+  slotBarBooked: { backgroundColor: colors.primary + '30' },
+  slotInfo: { flex: 1, marginLeft: 12 },
+  slotPatient: { fontSize: 14, fontWeight: '600', color: colors.text },
+  slotEnd: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
+  slotAvailable: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
+  weekGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  weekCard: {
+    width: '47%', backgroundColor: colors.surface, borderRadius: borderRadius.lg,
+    padding: 14, borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm,
+  },
+  weekCardBusy: { borderColor: colors.primary + '30', backgroundColor: colors.primary + '05' },
+  weekCardFull: { borderColor: colors.error + '30', backgroundColor: colors.errorLight },
+  weekDay: { fontSize: 13, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
+  weekStats: { marginTop: 8 },
+  weekCount: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+  weekCountBusy: { color: colors.primary },
+  weekBar: { height: 4, borderRadius: 2, marginTop: 6, overflow: 'hidden' },
+  weekBarFill: { height: 4, borderRadius: 2 },
+  emptyState: { alignItems: 'center', paddingVertical: 48 },
+  emptyCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary + '10', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  emptyIcon: { fontSize: 24, fontWeight: '800', color: colors.primary, letterSpacing: -0.5 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 4, letterSpacing: -0.2 },
+  emptySub: { fontSize: 13, color: colors.textMuted },
 });

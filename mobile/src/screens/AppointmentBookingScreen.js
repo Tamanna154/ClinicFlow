@@ -42,21 +42,17 @@ export default function AppointmentBookingScreen({ route, navigation }) {
     })();
   }, []));
 
-  const fetchSlots = async () => {
+  useFocusEffect(useCallback(() => {
     if (!form.doctorId || !form.appointmentDate.trim()) return;
     setLoadingSlots(true);
-    try {
-      const data = await scheduleApi.get(form.doctorId, form.appointmentDate.trim(), 'daily');
-      setSlots(data.days?.[0]?.slots || []);
-    } catch (e) { setSlots([]); }
-    finally { setLoadingSlots(false); }
-  };
-
-  const loadSlots = useCallback(() => {
-    if (form.doctorId && form.appointmentDate) fetchSlots();
-  }, [form.doctorId, form.appointmentDate]);
-
-  useFocusEffect(useCallback(() => { loadSlots(); }, [form.doctorId, form.appointmentDate]));
+    (async () => {
+      try {
+        const data = await scheduleApi.get(form.doctorId, form.appointmentDate.trim(), 'daily');
+        setSlots(data.days?.[0]?.slots || []);
+      } catch (e) { setSlots([]); }
+      finally { setLoadingSlots(false); }
+    })();
+  }, [form.doctorId, form.appointmentDate]));
 
   const selectSlot = (slot) => {
     setForm({ ...form, startTime: slot.startTime.slice(0,5), endTime: slot.endTime.slice(0,5) });
@@ -64,12 +60,20 @@ export default function AppointmentBookingScreen({ route, navigation }) {
 
   const validate = () => {
     const errs = {};
+    const today = new Date();
+    const todayStr = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
     if (!form.doctorId) errs.doctorId = 'Select a doctor';
     if (!form.patientId) errs.patientId = 'Select a patient';
     if (!form.appointmentDate.trim()) errs.appointmentDate = 'Required';
     else if (!/^\d{4}-\d{2}-\d{2}$/.test(form.appointmentDate.trim())) errs.appointmentDate = 'Use YYYY-MM-DD';
+    else if (form.appointmentDate.trim() < todayStr) errs.appointmentDate = 'Cannot book in the past';
     if (!form.startTime.trim()) errs.startTime = 'Required';
     else if (!/^\d{2}:\d{2}$/.test(form.startTime.trim())) errs.startTime = 'Use HH:MM';
+    else if (!errs.appointmentDate && form.appointmentDate.trim() === todayStr) {
+      const currentMin = today.getHours()*60 + today.getMinutes();
+      const [sh, sm] = form.startTime.split(':').map(Number);
+      if (sh*60+sm <= currentMin) errs.startTime = 'Time has already passed';
+    }
     if (!form.endTime.trim()) errs.endTime = 'Required';
     else if (!/^\d{2}:\d{2}$/.test(form.endTime.trim())) errs.endTime = 'Use HH:MM';
     if (form.startTime && form.endTime && form.startTime >= form.endTime) errs.endTime = 'Must be after start';
@@ -93,8 +97,15 @@ export default function AppointmentBookingScreen({ route, navigation }) {
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (err) {
-      Alert.alert('Conflict', 'This slot is booked. Select an available slot from below.');
-      fetchSlots();
+      Alert.alert('Booking Failed', err.message || 'Could not book appointment.');
+      if (form.doctorId && form.appointmentDate.trim()) {
+        (async () => {
+          try {
+            const data = await scheduleApi.get(form.doctorId, form.appointmentDate.trim(), 'daily');
+            setSlots(data.days?.[0]?.slots || []);
+          } catch (_) { setSlots([]); }
+        })();
+      }
     } finally { setSaving(false); }
   };
 

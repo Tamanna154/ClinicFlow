@@ -108,6 +108,20 @@ export default function PatientBookingScreen({ navigation }) {
         Alert.alert('Invalid', 'Use YYYY-MM-DD format.');
         return false;
       }
+      const today = new Date();
+      const todayStr = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+      if (appointmentDate.trim() < todayStr) {
+        Alert.alert('Invalid Date', 'Cannot book an appointment in the past.');
+        return false;
+      }
+      if (appointmentDate.trim() === todayStr && startTime) {
+        const currentMin = today.getHours()*60 + today.getMinutes();
+        const [sh, sm] = startTime.split(':').map(Number);
+        if (sh*60+sm <= currentMin) {
+          Alert.alert('Invalid Time', 'Selected time has already passed. Choose a later time.');
+          return false;
+        }
+      }
       if (!startTime || !endTime) {
         Alert.alert('Required', 'Please select a time slot.');
         return false;

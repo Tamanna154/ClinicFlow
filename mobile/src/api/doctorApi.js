@@ -1,4 +1,5 @@
 import { ensureApiConnected } from './patientApi';
+import { authFetch } from './client';
 
 const getApiBase = async () => {
   const apiBase = await ensureApiConnected();
@@ -8,28 +9,28 @@ const getApiBase = async () => {
 export const doctorApi = {
   async getAll() {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/doctors`);
+    const res = await authFetch(`${apiBase}/doctors`);
     if (!res.ok) throw new Error('Failed to fetch doctors');
     return res.json();
   },
 
   async getActive() {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/doctors/active`);
+    const res = await authFetch(`${apiBase}/doctors/active`);
     if (!res.ok) throw new Error('Failed to fetch active doctors');
     return res.json();
   },
 
   async getById(id) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/doctors/${id}`);
+    const res = await authFetch(`${apiBase}/doctors/${id}`);
     if (!res.ok) throw new Error('Doctor not found');
     return res.json();
   },
 
   async create(doctor) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/doctors`, {
+    const res = await authFetch(`${apiBase}/doctors`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(doctor),
@@ -48,7 +49,7 @@ export const doctorApi = {
 
   async update(id, doctor) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/doctors/${id}`, {
+    const res = await authFetch(`${apiBase}/doctors/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(doctor),
@@ -67,7 +68,7 @@ export const doctorApi = {
 
   async delete(id) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/doctors/${id}`, {
+    const res = await authFetch(`${apiBase}/doctors/${id}`, {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete doctor');
@@ -75,21 +76,21 @@ export const doctorApi = {
 
   async search(query) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/doctors/search?q=${encodeURIComponent(query)}`);
+    const res = await authFetch(`${apiBase}/doctors/search?q=${encodeURIComponent(query)}`);
     if (!res.ok) throw new Error('Search failed');
     return res.json();
   },
 
   async getAvailability(doctorId) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/doctors/${doctorId}/availability`);
+    const res = await authFetch(`${apiBase}/doctors/${doctorId}/availability`);
     if (!res.ok) throw new Error('Failed to fetch availability');
     return res.json();
   },
 
   async createAvailability(availability) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/doctors/${availability.doctorId}/availability`, {
+    const res = await authFetch(`${apiBase}/doctors/${availability.doctorId}/availability`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(availability),
@@ -108,7 +109,7 @@ export const doctorApi = {
 
   async deleteAvailability(doctorId, availabilityId) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/doctors/${doctorId}/availability/${availabilityId}`, {
+    const res = await authFetch(`${apiBase}/doctors/${doctorId}/availability/${availabilityId}`, {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete availability');

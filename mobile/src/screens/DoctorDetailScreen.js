@@ -6,8 +6,12 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { doctorApi } from '../api/doctorApi';
 import { appointmentApi } from '../api/appointmentApi';
+import { useAuth } from '../context/AuthContext';
+import { usePermission } from '../hooks/usePermission';
+import { useSettings } from '../context/SettingsContext';
+import Avatar, { StatusDot } from '../components/Avatar';
 import AppointmentCard from '../components/AppointmentCard';
-import { colors, shadows, borderRadius, typography } from '../theme';
+import { colors, shadows, borderRadius } from '../theme';
 
 function Section({ title, children }) {
   return (
@@ -38,6 +42,9 @@ export default function DoctorDetailScreen({ route, navigation }) {
   const [doctor, setDoctor] = useState(initial);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
+  const { formatCurrency } = useSettings();
+  const canManage = user?.role === 'DOCTOR';
 
   useFocusEffect(useCallback(() => {
     let mounted = true;
@@ -65,15 +72,15 @@ export default function DoctorDetailScreen({ route, navigation }) {
     ]);
   };
 
-  const initials = doctor.name?.trim().split(/\s+/).map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'DR';
   const recent = appointments.slice(0, 5);
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.profileCard}>
-          <View style={[styles.avatar, doctor.isActive ? styles.avatarActive : styles.avatarInactive]}>
-            <Text style={styles.avatarText}>{initials}</Text>
+          <View>
+            <Avatar name={doctor.name} size={72} />
+            {doctor.isActive && <StatusDot size={12} />}
           </View>
           <Text style={styles.name}>Dr. {doctor.name}</Text>
           {doctor.specialization && (
@@ -124,7 +131,7 @@ export default function DoctorDetailScreen({ route, navigation }) {
 
         {doctor.consultationFee != null && (
           <Section title="Consultation Fee">
-            <Text style={styles.feeText}>₹{Number(doctor.consultationFee).toLocaleString()}</Text>
+            <Text style={styles.feeText}>{formatCurrency(doctor.consultationFee)}</Text>
           </Section>
         )}
 
@@ -162,10 +169,12 @@ export default function DoctorDetailScreen({ route, navigation }) {
         </TouchableOpacity>
       </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.editBtn} onPress={handleEdit}><Text style={styles.btnText}>Edit</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}><Text style={[styles.btnText, { color: '#FFFFFF' }]}>Delete</Text></TouchableOpacity>
-      </View>
+      {canManage && (
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.editBtn} onPress={handleEdit}><Text style={styles.btnText}>Edit</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}><Text style={[styles.btnText, { color: '#FFFFFF' }]}>Delete</Text></TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -173,13 +182,13 @@ export default function DoctorDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, paddingBottom: 32 },
-  profileCard: { backgroundColor: colors.surface, borderRadius: borderRadius.xl, padding: 24, alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: colors.borderLight, ...shadows.md },
-  avatar: { width: 72, height: 72, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  avatarActive: { backgroundColor: colors.primary + '15' },
-  avatarInactive: { backgroundColor: colors.bg },
-  avatarText: { fontSize: 24, fontWeight: '700', color: colors.primary },
-  name: { fontSize: 22, fontWeight: '800', color: colors.text, marginBottom: 8 },
-  specBadge: { backgroundColor: colors.primary + '12', paddingHorizontal: 14, paddingVertical: 4, borderRadius: 8, marginBottom: 10 },
+  profileCard: {
+    backgroundColor: colors.surface, borderRadius: borderRadius['2xl'], padding: 28,
+    alignItems: 'center', marginBottom: 16,
+    borderWidth: 1, borderColor: colors.borderLight, ...shadows.md,
+  },
+  name: { fontSize: 22, fontWeight: '800', color: colors.text, marginTop: 12, marginBottom: 8, letterSpacing: -0.3 },
+  specBadge: { backgroundColor: colors.primary + '10', paddingHorizontal: 14, paddingVertical: 4, borderRadius: 8, marginBottom: 10 },
   specText: { fontSize: 12, fontWeight: '600', color: colors.primary },
   statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
   statusActive: { backgroundColor: colors.successLight },
@@ -188,8 +197,11 @@ const styles = StyleSheet.create({
   dotActive: { backgroundColor: colors.success },
   dotInactive: { backgroundColor: colors.textMuted },
   statusText: { fontSize: 12, fontWeight: '600' },
-  section: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm },
-  sectionTitle: { ...typography.label, color: colors.primary, marginBottom: 12, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  section: {
+    backgroundColor: colors.surface, borderRadius: borderRadius.xl, padding: 16,
+    marginBottom: 12, borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm,
+  },
+  sectionTitle: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   rowIcon: { fontSize: 13, marginRight: 8, width: 18, textAlign: 'center' },
@@ -197,13 +209,17 @@ const styles = StyleSheet.create({
   rowValue: { fontSize: 13, color: colors.text, fontWeight: '600', textAlign: 'right' },
   linkText: { color: colors.primaryLight, textDecorationLine: 'underline' },
   bioText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500', lineHeight: 20 },
-  feeText: { fontSize: 22, fontWeight: '800', color: colors.text },
-  calendarCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.successLight, borderWidth: 1, borderColor: '#BBF7D0', borderRadius: borderRadius.md, padding: 14, marginBottom: 12 },
+  feeText: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
+  calendarCard: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.successLight,
+    borderWidth: 1, borderColor: '#BBF7D0', borderRadius: borderRadius.md,
+    padding: 14, marginBottom: 12,
+  },
   calendarIcon: { fontSize: 22, color: colors.success, marginRight: 12, fontWeight: '700' },
   calendarTitle: { fontSize: 14, fontWeight: '700', color: colors.success },
   calendarDesc: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, marginTop: 4, paddingHorizontal: 4 },
-  sectionHeaderTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+  sectionHeaderTitle: { fontSize: 15, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
   viewAll: { fontSize: 13, fontWeight: '600', color: colors.primaryLight },
   emptyText: { textAlign: 'center', color: colors.textMuted, paddingVertical: 16, fontSize: 13 },
   bookBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', marginTop: 8, ...shadows.sm },

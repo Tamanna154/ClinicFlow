@@ -1,4 +1,5 @@
 import { ensureApiConnected } from './patientApi';
+import { authFetch } from './client';
 
 const getApiBase = async () => {
   const apiBase = await ensureApiConnected();
@@ -8,49 +9,49 @@ const getApiBase = async () => {
 export const appointmentApi = {
   async getAll() {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/appointments`);
+    const res = await authFetch(`${apiBase}/appointments`);
     if (!res.ok) throw new Error('Failed to fetch appointments');
     return res.json();
   },
 
   async getById(id) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/appointments/${id}`);
+    const res = await authFetch(`${apiBase}/appointments/${id}`);
     if (!res.ok) throw new Error('Appointment not found');
     return res.json();
   },
 
   async getByDoctor(doctorId) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/appointments/by-doctor/${doctorId}`);
+    const res = await authFetch(`${apiBase}/appointments/by-doctor/${doctorId}`);
     if (!res.ok) throw new Error('Failed to fetch appointments');
     return res.json();
   },
 
   async getByPatient(patientId) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/appointments/by-patient/${patientId}`);
+    const res = await authFetch(`${apiBase}/appointments/by-patient/${patientId}`);
     if (!res.ok) throw new Error('Failed to fetch appointments');
     return res.json();
   },
 
   async getByDate(date) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/appointments/by-date?date=${date}`);
+    const res = await authFetch(`${apiBase}/appointments/by-date?date=${date}`);
     if (!res.ok) throw new Error('Failed to fetch appointments');
     return res.json();
   },
 
   async getByDoctorAndDate(doctorId, date) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/appointments/by-doctor-date?doctorId=${doctorId}&date=${date}`);
+    const res = await authFetch(`${apiBase}/appointments/by-doctor-date?doctorId=${doctorId}&date=${date}`);
     if (!res.ok) throw new Error('Failed to fetch appointments');
     return res.json();
   },
 
   async create(appointment) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/appointments`, {
+    const res = await authFetch(`${apiBase}/appointments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(appointment),
@@ -69,7 +70,7 @@ export const appointmentApi = {
 
   async update(id, appointment) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/appointments/${id}`, {
+    const res = await authFetch(`${apiBase}/appointments/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(appointment),
@@ -88,7 +89,7 @@ export const appointmentApi = {
 
   async updateStatus(id, status) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/appointments/${id}/status`, {
+    const res = await authFetch(`${apiBase}/appointments/${id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
@@ -107,7 +108,7 @@ export const appointmentApi = {
 
   async addVisitNotes(id, notes) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/appointments/${id}/visit-notes`, {
+    const res = await authFetch(`${apiBase}/appointments/${id}/visit-notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(notes),
@@ -118,7 +119,7 @@ export const appointmentApi = {
 
   async delete(id) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/appointments/${id}`, {
+    const res = await authFetch(`${apiBase}/appointments/${id}`, {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete appointment');
@@ -126,7 +127,7 @@ export const appointmentApi = {
 
   async patientBook(doctorId, date, startTime, endTime, reason) {
     const apiBase = await getApiBase();
-    const res = await fetch(`${apiBase}/appointments/patient-book`, {
+    const res = await authFetch(`${apiBase}/appointments/patient-book`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

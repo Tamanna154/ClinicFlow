@@ -1,11 +1,12 @@
 import { ensureApiConnected } from './patientApi';
+import { authFetch } from './client';
 
 const getBase = async () => await ensureApiConnected();
 
 export const reminderApi = {
   async create(appointmentId, hoursBefore = 24) {
     const base = await getBase();
-    const res = await fetch(`${base}/reminders/appointment/${appointmentId}?hoursBefore=${hoursBefore}`, {
+    const res = await authFetch(`${base}/reminders/appointment/${appointmentId}?hoursBefore=${hoursBefore}`, {
       method: 'POST',
     });
     if (!res.ok) throw new Error('Failed to create reminder');
@@ -14,7 +15,7 @@ export const reminderApi = {
 
   async getByAppointment(appointmentId) {
     const base = await getBase();
-    const res = await fetch(`${base}/reminders/appointment/${appointmentId}`);
+    const res = await authFetch(`${base}/reminders/appointment/${appointmentId}`);
     if (!res.ok) throw new Error('Failed to fetch reminders');
     return res.json();
   },

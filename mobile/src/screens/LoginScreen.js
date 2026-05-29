@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { login } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
@@ -22,12 +22,13 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
     try {
       const data = await login(username.trim(), password.trim());
-      const user = { id: data.id, name: data.name, username: data.username, role: data.role, doctorId: data.doctorId, patientId: data.patientId };
+      const user = { id: data.id, name: data.name, username: data.username, role: data.role, doctorId: data.doctorId, patientId: data.patientId, permissions: data.permissions || [] };
       setUser(user);
       setToken(data.token);
       setApiToken(data.token);
     } catch (err) {
-      Alert.alert('Login Failed', err.message);
+      const isNetwork = err.message.includes('network') || err.message.includes('connect');
+      Alert.alert(isNetwork ? 'Network Error' : 'Login Failed', err.message);
     } finally {
       setLoading(false);
     }
@@ -35,36 +36,49 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.content}>
-        <View style={styles.logoCircle}>
-          <Text style={styles.logoText}>C</Text>
+      <ScrollView contentContainerStyle={styles.scroll} bounces={false}>
+        <View style={styles.hero}>
+          <View style={styles.heroBg}>
+            <View style={styles.heroShape1} />
+            <View style={styles.heroShape2} />
+          </View>
+          <View style={styles.heroContent}>
+            <View style={styles.logo}>
+              <Text style={styles.logoCross}>+</Text>
+            </View>
+            <Text style={styles.title}>ClinicFlow</Text>
+            <Text style={styles.subtitle}>Healthcare management simplified</Text>
+          </View>
         </View>
-        <Text style={styles.title}>ClinicFlow</Text>
-        <Text style={styles.subtitle}>Doctor & Receptionist Portal</Text>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Sign In</Text>
+          <Text style={styles.cardTitle}>Welcome back</Text>
+          <Text style={styles.cardSub}>Sign in to your account</Text>
 
-          <Text style={styles.label}>Username</Text>
-          <TextInput
-            style={styles.input}
-            value={username}
-            onChangeText={setUsername}
-            placeholder="Enter username"
-            placeholderTextColor={colors.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Username</Text>
+            <TextInput
+              style={styles.input}
+              value={username}
+              onChangeText={setUsername}
+              placeholder="Enter username"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
 
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Enter password"
-            placeholderTextColor={colors.textMuted}
-            secureTextEntry
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Enter password"
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry
+            />
+          </View>
 
           <TouchableOpacity
             style={[styles.loginBtn, loading && { opacity: 0.6 }]}
@@ -84,41 +98,65 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.hint}>Doctor: doctor@gmail.com / doctor123</Text>
-        <Text style={styles.hint}>Receptionist: receptionist@gmail.com / reception123</Text>
-      </View>
+        <View style={styles.footer}>
+          <Text style={styles.hint}>Doctor: doctor@gmail.com</Text>
+          <Text style={styles.hint}>Receptionist: receptionist@gmail.com</Text>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.primary },
-  content: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
-  logoCircle: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: '#FFFFFF20', justifyContent: 'center', alignItems: 'center', marginBottom: 12,
+  scroll: { flexGrow: 1 },
+  hero: {
+    paddingTop: 70, paddingBottom: 48,
+    alignItems: 'center', overflow: 'hidden',
   },
-  logoText: { fontSize: 32, fontWeight: '800', color: '#FFFFFF' },
-  title: { fontSize: 28, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.5 },
-  subtitle: { fontSize: 14, color: '#FFFFFFCC', marginTop: 4, marginBottom: 32 },
+  heroBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  heroShape1: {
+    position: 'absolute', top: -60, right: -40,
+    width: 200, height: 200, borderRadius: 100,
+    backgroundColor: '#FFFFFF08',
+  },
+  heroShape2: {
+    position: 'absolute', bottom: -30, left: -60,
+    width: 160, height: 160, borderRadius: 80,
+    backgroundColor: '#FFFFFF06',
+  },
+  heroContent: { alignItems: 'center' },
+  logo: {
+    width: 68, height: 68, borderRadius: 22,
+    backgroundColor: '#FFFFFF20',
+    justifyContent: 'center', alignItems: 'center', marginBottom: 16,
+    borderWidth: 1, borderColor: '#FFFFFF30',
+  },
+  logoCross: { fontSize: 34, fontWeight: '300', color: '#FFFFFF', marginTop: -2 },
+  title: { fontSize: 30, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.5 },
+  subtitle: { fontSize: 14, color: '#FFFFFFCC', marginTop: 6 },
   card: {
-    backgroundColor: colors.surface, borderRadius: borderRadius.xl, padding: 24,
-    width: '100%', ...shadows.lg,
+    backgroundColor: colors.surface, borderRadius: 28, padding: 28,
+    marginHorizontal: 20, marginTop: -20,
+    ...shadows.xl,
   },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 20, textAlign: 'center' },
-  label: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 },
+  cardTitle: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
+  cardSub: { fontSize: 14, color: colors.textSecondary, marginTop: 4, marginBottom: 28 },
+  inputGroup: { marginBottom: 16 },
+  label: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6, marginLeft: 2, textTransform: 'uppercase', letterSpacing: 0.3 },
   input: {
-    backgroundColor: colors.bg, borderRadius: borderRadius.sm, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.text, fontWeight: '500',
-    marginBottom: 16,
+    backgroundColor: colors.bg, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: colors.text, fontWeight: '500',
   },
   loginBtn: {
     backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 16,
-    alignItems: 'center', marginTop: 4, ...shadows.md,
+    alignItems: 'center', marginTop: 8, ...shadows.md,
   },
-  loginBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  hint: { fontSize: 11, color: '#FFFFFFAA', marginTop: 8, textAlign: 'center' },
-  linkWrap: { marginTop: 16, alignItems: 'center' },
+  loginBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
+  linkWrap: { marginTop: 24, alignItems: 'center' },
   linkText: { fontSize: 13, color: colors.textSecondary },
-  linkHighlight: { color: colors.primary, fontWeight: '700' },
+  linkHighlight: { color: colors.primaryLight, fontWeight: '700' },
+  scroll: { flexGrow: 1 },
+  footer: { alignItems: 'center', paddingHorizontal: 20, marginTop: 24, paddingBottom: 20 },
+  hint: { fontSize: 11, color: '#FFFFFFAA', marginTop: 4, textAlign: 'center', letterSpacing: 0.2 },
 });

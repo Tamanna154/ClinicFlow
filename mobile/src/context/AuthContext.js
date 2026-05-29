@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { clearToken } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -6,8 +7,14 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
 
+  const logout = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    clearToken();
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, setUser, token, setToken }}>
+    <AuthContext.Provider value={{ user, setUser, token, setToken, logout }}>
       {children}
     </AuthContext.Provider>
   );

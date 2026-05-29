@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { appointmentApi } from '../api/appointmentApi';
 import { reminderApi } from '../api/reminderApi';
 import { patientApi } from '../api/patientApi';
+import { usePermission } from '../hooks/usePermission';
 import { colors, shadows, borderRadius, typography, getStatusStyle } from '../theme';
 
 const STATUS_FLOW = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED'];
@@ -20,15 +21,15 @@ function Section({ title, children }) {
   );
 }
 
-function Row({ label, value, icon }) {
+function Row({ icon, label, value, isLink }) {
   if (!value) return null;
   return (
     <View style={styles.row}>
-      <View style={styles.rowLeft}>
-        {icon && <Text style={styles.rowIcon}>{icon}</Text>}
+      <Text style={styles.rowIcon}>{icon}</Text>
+      <View style={styles.rowContent}>
         <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={[styles.rowValue, isLink && { color: colors.primaryLight, textDecorationLine: 'underline' }]}>{value}</Text>
       </View>
-      <Text style={styles.rowValue}>{String(value)}</Text>
     </View>
   );
 }
@@ -39,8 +40,11 @@ export default function AppointmentDetailScreen({ route, navigation }) {
   const [reminders, setReminders] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [reminderLoading, setReminderLoading] = useState(false);
-  const [visitNotes, setVisitNotes] = useState({ diagnosis: '', prescription: '', additionalNotes: '' });
-  const [visitNotesSaving, setVisitNotesSaving] = useState(false);
+  const [visitNotes, setVisitNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  const { hasPermission } = usePermission();
+  const canManage = hasPermission('MANAGE_APPOINTMENTS');
 
   useFocusEffect(useCallback(() => {
     let mounted = true;
@@ -97,25 +101,22 @@ export default function AppointmentDetailScreen({ route, navigation }) {
   };
 
   const handleSaveVisitNotes = async () => {
-    if (!visitNotes.diagnosis.trim() && !visitNotes.prescription.trim() && !visitNotes.additionalNotes.trim()) {
-      Alert.alert('Required', 'Add at least one note (diagnosis, prescription, or notes)');
-      return;
-    }
-    setVisitNotesSaving(true);
+    if (!visitNotes.trim()) return;
+    setSavingNotes(true);
     try {
-      const updated = await appointmentApi.addVisitNotes(appointment.id, visitNotes);
-      setAppointment(updated);
-      Alert.alert('Saved', 'Visit notes saved & patient record updated.');
-      setVisitNotes({ diagnosis: '', prescription: '', additionalNotes: '' });
+      await appointmentApi.addVisitNotes(appointment.id, visitNotes);
+      Alert.alert('Saved', 'Visit notes added.');
+      setVisitNotes('');
     } catch (e) { Alert.alert('Error', e.message); }
-    finally { setVisitNotesSaving(false); }
+    finally { setSavingNotes(false); }
   };
 
-  const dateFormatted = appointment.appointmentDate
-    ? new Date(appointment.appointmentDate + 'T00:00:00').toLocaleDateString('en-US', {
-        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-      })
-    : '';
+  const date = appointment.appointmentDate
+    ? new Date(appointment.appointmentDate + 'T00:00:00')
+    : null;
+  const dateStr = date
+    ? date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+    : '-';
 
   return (
     <View style={styles.container}>
@@ -123,131 +124,99 @@ export default function AppointmentDetailScreen({ route, navigation }) {
         <View style={styles.header}>
           <View style={[styles.statusBadge, { backgroundColor: ss.bg }]}>
             <View style={[styles.statusDot, { backgroundColor: ss.text }]} />
-            <Text style={[styles.statusText, { color: ss.text }]}>{status}</Text>
+            <Text style={[styles.statusText, { color: ss.text }]}>{appointment.status}</Text>
           </View>
-          <Text style={styles.dateText}>{dateFormatted}</Text>
-          <Text style={styles.timeText}>{appointment.startTime} - {appointment.endTime}</Text>
+          <Text style={styles.date}>{dateStr}</Text>
+          <View style={styles.timeBlock}>
+            <Text style={styles.timeLabel}>Time</Text>
+            <Text style={styles.timeValue}>{appointment.startTime} - {appointment.endTime}</Text>
+          </View>
         </View>
-
-        <Section title="Doctor">
-          <Row icon="👨‍⚕️" label="Name" value={`Dr. ${appointment.doctorName}`} />
-          <Row icon="🔬" label="Specialization" value={appointment.doctorSpecialization} />
-        </Section>
 
         <Section title="Patient">
           <Row icon="👤" label="Name" value={appointment.patientName} />
           <Row icon="📞" label="Phone" value={appointment.patientPhone} />
         </Section>
 
-        {appointment.reason && (
-          <Section title="Reason for Visit">
-            <Text style={styles.reasonText}>{appointment.reason}</Text>
-          </Section>
-        )}
+        <Section title="Doctor">
+          <Row icon="👨‍⚕️" label="Name" value={appointment.doctorName ? `Dr. ${appointment.doctorName}` : null} />
+        </Section>
 
-        {appointment.notes && (
-          <Section title="Notes">
-            <Text style={styles.reasonText}>{appointment.notes}</Text>
-          </Section>
-        )}
+        <Section title="Details">
+          <Row icon="📝" label="Reason" value={appointment.reason} />
+          <Row icon="🔗" label="Type" value={appointment.isOnline ? 'Online Consultation' : 'In-Person Visit'} />
+        </Section>
 
-        {appointment.isOnline && (
-          <View style={styles.onlineCard}>
-            <Text style={styles.onlineIcon}>📹</Text>
-            <View style={styles.onlineInfo}>
-              <Text style={styles.onlineTitle}>Online Consultation</Text>
-              {appointment.meetingLink ? (
-                <TouchableOpacity onPress={() => Linking.openURL(appointment.meetingLink)}>
-                  <Text style={styles.onlineLink}>{appointment.meetingLink}</Text>
-                </TouchableOpacity>
-              ) : (
-                <Text style={styles.onlineNoLink}>No meeting link provided</Text>
-              )}
-            </View>
-          </View>
-        )}
+        <Section title="Visit Notes">
+          <TextInput
+            style={styles.notesInput}
+            placeholder="Add visit notes..."
+            placeholderTextColor={colors.textMuted}
+            value={visitNotes}
+            onChangeText={setVisitNotes}
+            multiline
+            numberOfLines={3}
+          />
+          <TouchableOpacity
+            style={[styles.saveNotesBtn, (!visitNotes.trim() || savingNotes) && { opacity: 0.5 }]}
+            onPress={handleSaveVisitNotes}
+            disabled={!visitNotes.trim() || savingNotes}
+            activeOpacity={0.8}
+          >
+            {savingNotes ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.saveNotesText}>Save Notes</Text>}
+          </TouchableOpacity>
+        </Section>
 
-        {appointment.consultationNotes && (
-          <Section title="Doctor's Consultation Notes">
-            <Text style={styles.reasonText}>{appointment.consultationNotes}</Text>
-          </Section>
-        )}
-
-        {appointment.googleEventId && (
-          <View style={styles.googleCard}>
-            <Text style={styles.googleIcon}>▣</Text>
-            <View>
-              <Text style={styles.googleTitle}>Google Calendar Event</Text>
-              <Text style={styles.googleId}>ID: {appointment.googleEventId}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Doctor's Visit Notes (only when IN_PROGRESS) */}
-        {appointment.status === 'IN_PROGRESS' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Doctor's Visit Notes</Text>
-            <Text style={styles.visitNoteHint}>These will be saved to the patient's medical history</Text>
-            <View style={{marginBottom: 10}}><Text style={{fontSize:12, fontWeight:'600', color:colors.textSecondary, marginBottom:4}}>Diagnosis</Text><TextInput style={[styles.viInput, styles.viMultiline]} value={visitNotes.diagnosis} onChangeText={(v) => setVisitNotes({...visitNotes, diagnosis: v})} placeholder="e.g. Acute bronchitis..." placeholderTextColor={colors.textMuted} multiline numberOfLines={2} /></View>
-            <View style={{marginBottom: 10}}><Text style={{fontSize:12, fontWeight:'600', color:colors.textSecondary, marginBottom:4}}>Prescription</Text><TextInput style={[styles.viInput, styles.viMultiline]} value={visitNotes.prescription} onChangeText={(v) => setVisitNotes({...visitNotes, prescription: v})} placeholder="e.g. Amoxicillin 500mg..." placeholderTextColor={colors.textMuted} multiline numberOfLines={2} /></View>
-            <View style={{marginBottom: 10}}><Text style={{fontSize:12, fontWeight:'600', color:colors.textSecondary, marginBottom:4}}>Additional Notes</Text><TextInput style={[styles.viInput, styles.viMultiline]} value={visitNotes.additionalNotes} onChangeText={(v) => setVisitNotes({...visitNotes, additionalNotes: v})} placeholder="Any other observations..." placeholderTextColor={colors.textMuted} multiline numberOfLines={2} /></View>
-            <TouchableOpacity style={[styles.viSaveBtn, visitNotesSaving && {opacity:0.6}]} onPress={handleSaveVisitNotes} disabled={visitNotesSaving}>
-              {visitNotesSaving ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.viSaveBtnText}>Save to Patient Record</Text>}
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Reminders Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>SMS Reminders</Text>
+        <Section title="Reminders">
           {reminders.length > 0 ? (
-            reminders.map((r, i) => (
-              <View key={i} style={styles.reminderRow}>
-                <View style={[styles.reminderDot, r.sent ? { backgroundColor: colors.success } : { backgroundColor: colors.warning }]} />
-                <View style={styles.reminderInfo}>
-                  <Text style={styles.reminderTime}>
-                    {new Date(r.reminderTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                  <Text style={styles.reminderStatus}>{r.sent ? 'Sent' : `Pending (${r.sendSms ? 'SMS' : 'No SMS'})`}</Text>
-                </View>
+            reminders.map((r) => (
+              <View key={r.id} style={styles.reminderRow}>
+                <Text style={styles.reminderTime}>{r.hoursBefore}h before</Text>
+                <Text style={styles.reminderStatus}>{r.sent ? 'Sent' : 'Pending'}</Text>
               </View>
             ))
           ) : (
             <Text style={styles.noReminders}>No reminders set</Text>
           )}
           {!reminderLoading ? (
-            <View style={styles.reminderActions}>
+            <View style={styles.reminderBtns}>
               <TouchableOpacity style={styles.reminderBtn} onPress={() => handleCreateReminder(24)} activeOpacity={0.7}>
-                <Text style={styles.reminderBtnText}>Remind 24h before</Text>
+                <Text style={styles.reminderBtnText}>24h before</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.reminderBtn} onPress={() => handleCreateReminder(2)} activeOpacity={0.7}>
-                <Text style={styles.reminderBtnText}>Remind 2h before</Text>
+                <Text style={styles.reminderBtnText}>2h before</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 8 }} />
           )}
-        </View>
+        </Section>
 
         {actionLoading && <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 12 }} />}
 
-        <View style={styles.actionButtons}>
-          {canAdvance && (
-            <TouchableOpacity style={styles.advanceBtn} onPress={() => changeStatus(STATUS_FLOW[idx + 1])} activeOpacity={0.8} disabled={actionLoading}>
-              <Text style={styles.advanceBtnText}>Mark as {STATUS_FLOW[idx + 1]}</Text>
-            </TouchableOpacity>
-          )}
-          {status !== 'CANCELLED' && status !== 'COMPLETED' && (
-            <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel} activeOpacity={0.8} disabled={actionLoading}>
-              <Text style={styles.cancelBtnText}>Cancel Appointment</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        {canManage && (
+          <View style={styles.actionRow}>
+            {canAdvance && (
+              <TouchableOpacity style={styles.advanceBtn} onPress={() => changeStatus(STATUS_FLOW[idx + 1])} activeOpacity={0.8} disabled={actionLoading}>
+                <Text style={styles.advanceBtnText}>Mark as {STATUS_FLOW[idx + 1]}</Text>
+              </TouchableOpacity>
+            )}
+            {status !== 'CANCELLED' && status !== 'COMPLETED' && (
+              <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel} activeOpacity={0.8} disabled={actionLoading}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}><Text style={styles.deleteBtnText}>Delete</Text></TouchableOpacity>
-      </View>
+      {canManage && (
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
+            <Text style={styles.deleteBtnText}>Delete Appointment</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -255,50 +224,51 @@ export default function AppointmentDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, paddingBottom: 32 },
-  header: { backgroundColor: colors.surface, borderRadius: borderRadius.xl, padding: 24, alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: colors.borderLight, ...shadows.md },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 6, borderRadius: borderRadius.sm, marginBottom: 12, gap: 6 },
+  header: {
+    backgroundColor: colors.surface, borderRadius: borderRadius['2xl'], padding: 24,
+    alignItems: 'center', marginBottom: 16,
+    borderWidth: 1, borderColor: colors.borderLight, ...shadows.md,
+  },
+  statusBadge: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 6,
+    borderRadius: borderRadius.md, marginBottom: 12, gap: 6,
+  },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 14, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
-  dateText: { fontSize: 19, fontWeight: '800', color: colors.text, marginBottom: 4 },
-  timeText: { fontSize: 15, fontWeight: '600', color: colors.textSecondary },
-  section: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm },
-  sectionTitle: { ...typography.label, color: colors.primary, marginBottom: 12, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
-  rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  rowIcon: { fontSize: 13, marginRight: 8, width: 18, textAlign: 'center' },
-  rowLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
-  rowValue: { fontSize: 13, color: colors.text, fontWeight: '600', textAlign: 'right' },
-  reasonText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500', lineHeight: 20 },
-  onlineCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.infoLight, borderWidth: 1, borderColor: '#BAE6FD', borderRadius: borderRadius.md, padding: 14, marginBottom: 12 },
-  onlineIcon: { fontSize: 22, marginRight: 12 },
-  onlineInfo: { flex: 1 },
-  onlineTitle: { fontSize: 14, fontWeight: '700', color: colors.info },
-  onlineLink: { fontSize: 12, color: colors.primaryLight, textDecorationLine: 'underline', marginTop: 2 },
-  onlineNoLink: { fontSize: 12, color: colors.textMuted, marginTop: 2, fontStyle: 'italic' },
-  googleCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.successLight, borderWidth: 1, borderColor: '#BBF7D0', borderRadius: borderRadius.md, padding: 14, marginBottom: 12 },
-  visitNoteHint: { fontSize: 11, color: colors.textMuted, marginBottom: 12, fontStyle: 'italic' },
-  viInput: { backgroundColor: colors.surface, borderRadius: borderRadius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.text, fontWeight: '500' },
-  viMultiline: { minHeight: 56, textAlignVertical: 'top', paddingVertical: 10 },
-  viSaveBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 12, alignItems: 'center', marginTop: 4 },
-  viSaveBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
-  googleIcon: { fontSize: 22, color: colors.success, marginRight: 12, fontWeight: '700' },
-  googleTitle: { fontSize: 14, fontWeight: '700', color: colors.success },
-  googleId: { fontSize: 10, color: colors.textMuted, marginTop: 1, fontFamily: 'monospace' },
-  actionButtons: { gap: 8, marginTop: 4 },
-  advanceBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', ...shadows.sm },
-  advanceBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-  cancelBtn: { backgroundColor: colors.errorLight, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: '#FECACA' },
-  cancelBtnText: { color: colors.error, fontSize: 14, fontWeight: '700' },
-  reminderRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
-  reminderDot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
-  reminderInfo: { flex: 1 },
+  statusText: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },
+  date: { fontSize: 15, color: colors.textSecondary, fontWeight: '600', marginBottom: 8 },
+  timeBlock: { alignItems: 'center' },
+  timeLabel: { fontSize: 11, fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  timeValue: { fontSize: 24, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
+  section: {
+    backgroundColor: colors.surface, borderRadius: borderRadius.xl, padding: 16,
+    marginBottom: 12, borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm,
+  },
+  sectionTitle: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
+  rowIcon: { fontSize: 14, marginRight: 10, width: 20, textAlign: 'center', marginTop: 1 },
+  rowContent: { flex: 1 },
+  rowLabel: { fontSize: 11, fontWeight: '600', color: colors.textMuted, marginBottom: 1 },
+  rowValue: { fontSize: 14, fontWeight: '600', color: colors.text },
+  notesInput: {
+    backgroundColor: colors.bg, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border,
+    padding: 12, fontSize: 14, color: colors.text, fontWeight: '500', minHeight: 70,
+    textAlignVertical: 'top', marginBottom: 8,
+  },
+  saveNotesBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 10, alignItems: 'center' },
+  saveNotesText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  reminderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   reminderTime: { fontSize: 13, fontWeight: '600', color: colors.text },
-  reminderStatus: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
-  noReminders: { fontSize: 13, color: colors.textMuted, textAlign: 'center', paddingVertical: 12 },
-  reminderActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  reminderBtn: { flex: 1, backgroundColor: colors.bg, borderRadius: borderRadius.sm, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
-  reminderBtnText: { fontSize: 12, fontWeight: '600', color: colors.primary },
-  footer: { padding: 16, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.borderLight },
-  deleteBtn: { backgroundColor: colors.error, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center' },
-  deleteBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  reminderStatus: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
+  noReminders: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
+  reminderBtns: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  reminderBtn: { flex: 1, backgroundColor: colors.primary + '10', borderRadius: borderRadius.sm, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: colors.primary + '20' },
+  reminderBtnText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  actionRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  advanceBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 13, alignItems: 'center', ...shadows.sm },
+  advanceBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  cancelBtn: { flex: 1, backgroundColor: colors.warningLight, borderRadius: borderRadius.md, paddingVertical: 13, alignItems: 'center', borderWidth: 1, borderColor: '#FDE68A' },
+  cancelBtnText: { color: colors.warning, fontSize: 14, fontWeight: '700' },
+  footer: { backgroundColor: colors.surface, padding: 12, borderTopWidth: 1, borderTopColor: colors.borderLight },
+  deleteBtn: { backgroundColor: colors.errorLight, borderRadius: borderRadius.md, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: '#FECACA' },
+  deleteBtnText: { color: colors.error, fontSize: 14, fontWeight: '700' },
 });
