@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { SettingsProvider } from './src/context/SettingsContext';
 import { colors, shadows, borderRadius } from './src/theme';
 import LoginScreen from './src/screens/LoginScreen';
 import PatientRegisterScreen from './src/screens/PatientRegisterScreen';
@@ -22,30 +23,73 @@ import AppointmentDetailScreen from './src/screens/AppointmentDetailScreen';
 import BulkSmsScreen from './src/screens/BulkSmsScreen';
 import PatientBookingScreen from './src/screens/PatientBookingScreen';
 import PatientAppointmentsScreen from './src/screens/PatientAppointmentsScreen';
+import PatientReportsScreen from './src/screens/PatientReportsScreen';
+import StaffListScreen from './src/screens/StaffListScreen';
+import StaffFormScreen from './src/screens/StaffFormScreen';
+import PermissionsScreen from './src/screens/PermissionsScreen';
+import InventoryListScreen from './src/screens/InventoryListScreen';
+import InventoryFormScreen from './src/screens/InventoryFormScreen';
+import InventoryDetailScreen from './src/screens/InventoryDetailScreen';
+import InventoryDashboardScreen from './src/screens/InventoryDashboardScreen';
+import BillingDashboardScreen from './src/screens/BillingDashboardScreen';
+import MedicineBillingScreen from './src/screens/MedicineBillingScreen';
+import BillDetailScreen from './src/screens/BillDetailScreen';
+import IncomeDashboardScreen from './src/screens/IncomeDashboardScreen';
+import CurrencySettingsScreen from './src/screens/CurrencySettingsScreen';
+import AddExpenseScreen from './src/screens/AddExpenseScreen';
+
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const headerOpts = {
-  headerStyle: { backgroundColor: colors.primary },
+  headerStyle: { backgroundColor: colors.primary, elevation: 0, shadowOpacity: 0 },
   headerTintColor: '#FFFFFF',
-  headerTitleStyle: { fontWeight: '700', fontSize: 18, letterSpacing: -0.2 },
+  headerTitleStyle: { fontWeight: '700', fontSize: 17, letterSpacing: -0.3 },
   headerShadowVisible: false,
 };
 
+const TAB_ICONS = {
+  Patients: '👤', Doctors: '⚕', Appointments: '📅', Appts: '📅',
+  Calendar: '📋', Schedule: '📋',
+  Dashboard: '⌂', 'My Appointments': '📅', 'My Profile': '⚙', 'My Bookings': '📅',
+  Staff: '👥', Inventory: '📦', Stock: '📦',
+  Billing: '💰', Income: '📊',
+};
+
 function TabIcon({ label, focused }) {
-  const icons = { Patients: 'P', Doctors: 'D', Appointments: 'A', Calendar: 'C', Dashboard: 'H', 'My Profile': 'M' };
-  const icon = icons[label] || '?';
   return (
     <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
-      <Text style={[styles.tabIconText, focused && styles.tabIconTextActive]}>{icon}</Text>
+      <Text style={[styles.tabIconText, focused && { color: '#FFFFFF' }]}>{TAB_ICONS[label] || '?'}</Text>
     </View>
   );
 }
 
+function LogoutButton({ tintColor }) {
+  const { logout } = useAuth();
+  return (
+    <TouchableOpacity
+      onPress={() => Alert.alert('Logout', 'Are you sure you want to sign out?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign Out', style: 'destructive', onPress: logout },
+      ])}
+      style={{ marginRight: 8, padding: 8 }}
+      activeOpacity={0.6}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Text style={{ fontSize: 17, color: tintColor || '#FFFFFF', fontWeight: '700' }}>↩</Text>
+    </TouchableOpacity>
+  );
+}
+
+function HeaderRight() {
+  return <LogoutButton tintColor="#FFFFFF" />;
+}
+
 function PatientStack() {
   return (
-    <Stack.Navigator screenOptions={headerOpts}>
+    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
       <Stack.Screen name="PatientList" component={PatientListScreen} options={{ title: 'Patients' }} />
       <Stack.Screen name="PatientForm" component={PatientFormScreen} options={({ route }) => ({ title: route.params?.patient ? 'Edit Patient' : 'New Patient' })} />
       <Stack.Screen name="PatientDetail" component={PatientDetailScreen} options={({ route }) => ({ title: route.params?.patient?.name || 'Patient' })} />
@@ -56,7 +100,7 @@ function PatientStack() {
 
 function DoctorStack() {
   return (
-    <Stack.Navigator screenOptions={headerOpts}>
+    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
       <Stack.Screen name="DoctorList" component={DoctorListScreen} options={{ title: 'Doctors' }} />
       <Stack.Screen name="DoctorForm" component={DoctorFormScreen} options={({ route }) => ({ title: route.params?.doctor ? 'Edit Doctor' : 'New Doctor' })} />
       <Stack.Screen name="DoctorDetail" component={DoctorDetailScreen} options={({ route }) => ({ title: `Dr. ${route.params?.doctor?.name || 'Doctor'}` })} />
@@ -69,7 +113,7 @@ function DoctorStack() {
 
 function AppointmentStack() {
   return (
-    <Stack.Navigator screenOptions={headerOpts}>
+    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
       <Stack.Screen name="AppointmentList" component={AppointmentListScreen} options={{ title: 'Appointments' }} />
       <Stack.Screen name="AppointmentBooking" component={AppointmentBookingScreen} options={{ title: 'Book Appointment' }} />
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} options={{ title: 'Appointment' }} />
@@ -79,7 +123,7 @@ function AppointmentStack() {
 
 function CalendarStack() {
   return (
-    <Stack.Navigator screenOptions={headerOpts}>
+    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
       <Stack.Screen name="CalendarMain" component={CalendarScreen} options={{ title: 'Schedule' }} />
       <Stack.Screen name="CalendarBooking" component={AppointmentBookingScreen} options={{ title: 'Book Appointment' }} />
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} options={{ title: 'Appointment' }} />
@@ -97,21 +141,69 @@ function PatientPortalStack() {
   );
 }
 
+function StaffStack() {
+  return (
+    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
+      <Stack.Screen name="StaffList" component={StaffListScreen} options={{ title: 'Staff' }} />
+      <Stack.Screen name="StaffForm" component={StaffFormScreen} options={{ title: 'Add Staff' }} />
+      <Stack.Screen name="PermissionsScreen" component={PermissionsScreen} options={({ route }) => ({ title: route.params?.staffName ? `${route.params.staffName}'s Permissions` : 'Permissions' })} />
+    </Stack.Navigator>
+  );
+}
+
+function InventoryStack() {
+  return (
+    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
+      <Stack.Screen name="InventoryDashboard" component={InventoryDashboardScreen} options={{ title: 'Inventory' }} />
+      <Stack.Screen name="InventoryList" component={InventoryListScreen} options={{ title: 'All Items' }} />
+      <Stack.Screen name="InventoryForm" component={InventoryFormScreen} options={({ route }) => ({ title: route.params?.item ? 'Edit Item' : 'New Item' })} />
+      <Stack.Screen name="InventoryDetail" component={InventoryDetailScreen} options={({ route }) => ({ title: route.params?.item?.itemName || 'Item' })} />
+    </Stack.Navigator>
+  );
+}
+
+function BillingStack() {
+  return (
+    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
+      <Stack.Screen name="BillingDashboard" component={BillingDashboardScreen} options={{ title: 'Billing' }} />
+      <Stack.Screen name="MedicineBilling" component={MedicineBillingScreen} options={{ title: 'New Bill' }} />
+      <Stack.Screen name="BillDetail" component={BillDetailScreen} options={{ title: 'Bill Details' }} />
+    </Stack.Navigator>
+  );
+}
+
+function IncomeStack() {
+  return (
+    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
+      <Stack.Screen name="IncomeDashboard" component={IncomeDashboardScreen} options={{ title: 'Finance' }} />
+      <Stack.Screen name="CurrencySettings" component={CurrencySettingsScreen} options={{ title: 'Currency' }} />
+      <Stack.Screen name="AddExpense" component={AddExpenseScreen} options={{ title: 'Add Expense' }} />
+    </Stack.Navigator>
+  );
+}
+
 function PatientAppointmentStack() {
   return (
     <Stack.Navigator screenOptions={headerOpts}>
       <Stack.Screen name="PatientAppointmentList" component={PatientAppointmentsScreen} options={{ title: 'My Appointments' }} />
       <Stack.Screen name="PatientBooking" component={PatientBookingScreen} options={{ title: 'Book Appointment' }} />
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} options={{ title: 'Appointment' }} />
+      <Stack.Screen name="PatientReports" component={PatientReportsScreen} options={{ title: 'My Reports' }} />
     </Stack.Navigator>
   );
 }
 
-function PatientDashboardScreen() {
-  const { user } = useAuth();
+function PatientDashboardScreen({ navigation }) {
+  const { user, logout } = useAuth();
   return (
     <View style={patientStyles.container}>
       <View style={patientStyles.header}>
+        <TouchableOpacity style={patientStyles.headerLogout} onPress={() => Alert.alert('Logout', 'Are you sure you want to sign out?', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign Out', style: 'destructive', onPress: logout },
+        ])} activeOpacity={0.7}>
+          <Text style={{ fontSize: 18, color: '#FFFFFFCC' }}>↩</Text>
+        </TouchableOpacity>
         <View style={patientStyles.avatar}>
           <Text style={patientStyles.avatarText}>{user?.name?.charAt(0)?.toUpperCase() || 'P'}</Text>
         </View>
@@ -119,6 +211,12 @@ function PatientDashboardScreen() {
         <Text style={patientStyles.role}>Patient Portal</Text>
       </View>
       <ScrollView contentContainerStyle={patientStyles.cardsContainer}>
+        <TouchableOpacity style={[patientStyles.btn, { backgroundColor: colors.primary }]} onPress={() => navigation.navigate('My Appointments', { screen: 'PatientAppointmentList' })} activeOpacity={0.85}>
+          <Text style={patientStyles.btnText}>My Appointments</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[patientStyles.btn, { backgroundColor: colors.primaryLight }]} onPress={() => navigation.navigate('My Appointments', { screen: 'PatientReports' })} activeOpacity={0.85}>
+          <Text style={patientStyles.btnText}>My Reports</Text>
+        </TouchableOpacity>
         <View style={patientStyles.infoCard}>
           <Text style={patientStyles.infoLabel}>Username</Text>
           <Text style={patientStyles.infoValue}>{user?.username || '-'}</Text>
@@ -131,16 +229,28 @@ function PatientDashboardScreen() {
           <Text style={patientStyles.infoLabel}>Phone</Text>
           <Text style={patientStyles.infoValue}>{user?.phone || '-'}</Text>
         </View>
+        <TouchableOpacity style={patientStyles.logoutBtn} onPress={() => Alert.alert('Logout', 'Are you sure you want to sign out?', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign Out', style: 'destructive', onPress: logout },
+        ])} activeOpacity={0.85}>
+          <Text style={patientStyles.logoutBtnText}>Sign Out</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
 }
 
 function PatientProfileScreen() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   return (
     <View style={patientStyles.container}>
       <View style={patientStyles.header}>
+        <TouchableOpacity style={patientStyles.headerLogout} onPress={() => Alert.alert('Logout', 'Are you sure you want to sign out?', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign Out', style: 'destructive', onPress: logout },
+        ])} activeOpacity={0.7}>
+          <Text style={{ fontSize: 18, color: '#FFFFFFCC' }}>↩</Text>
+        </TouchableOpacity>
         <View style={patientStyles.avatar}>
           <Text style={patientStyles.avatarText}>{user?.name?.charAt(0)?.toUpperCase() || 'P'}</Text>
         </View>
@@ -156,6 +266,12 @@ function PatientProfileScreen() {
           <Text style={patientStyles.infoLabel}>Role</Text>
           <Text style={patientStyles.infoValue}>{user?.role || '-'}</Text>
         </View>
+        <TouchableOpacity style={patientStyles.logoutBtn} onPress={() => Alert.alert('Logout', 'Are you sure you want to sign out?', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign Out', style: 'destructive', onPress: logout },
+        ])} activeOpacity={0.85}>
+          <Text style={patientStyles.logoutBtnText}>Sign Out</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -175,6 +291,12 @@ const patientStyles = StyleSheet.create({
   },
   infoLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
   infoValue: { fontSize: 16, fontWeight: '600', color: colors.text },
+  headerLogout: { position: 'absolute', top: 52, right: 20, zIndex: 10, width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF15', justifyContent: 'center', alignItems: 'center' },
+  logoutBtn: {
+    backgroundColor: colors.error, borderRadius: borderRadius.md, paddingVertical: 14,
+    alignItems: 'center', marginTop: 20, ...shadows.md,
+  },
+  logoutBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   btn: {
     backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 14,
     alignItems: 'center', marginTop: 8, ...shadows.md,
@@ -209,25 +331,44 @@ function MyTabBar({ state, descriptors, navigation }) {
 function MainTabs() {
   const { user } = useAuth();
   const isDoctor = user?.role === 'DOCTOR';
-  const isPatient = user?.role === 'PATIENT';
 
   return (
     <Tab.Navigator tabBar={(props) => <MyTabBar {...props} />} screenOptions={{ headerShown: false }}>
-      <Tab.Screen name="Patients" component={PatientStack} />
-      <Tab.Screen name="Calendar" component={CalendarStack} />
-      {isDoctor && <Tab.Screen name="Doctors" component={DoctorStack} />}
-      {isPatient && <Tab.Screen name="My Bookings" component={PatientPortalStack} />}
-      <Tab.Screen name="Appointments" component={AppointmentStack} />
+      <Tab.Screen name="Calendar" component={CalendarStack} options={{ tabBarLabel: 'Schedule' }} />
+      <Tab.Screen name="Appointments" component={AppointmentStack} options={{ tabBarLabel: 'Appts' }} />
+      <Tab.Screen name="Patients" component={PatientStack} options={{ tabBarLabel: 'Patients' }} />
+      {isDoctor && <Tab.Screen name="Doctors" component={DoctorStack} options={{ tabBarLabel: 'Doctors' }} />}
+      <Tab.Screen name="Inventory" component={InventoryStack} options={{ tabBarLabel: 'Stock' }} />
+      <Tab.Screen name="Billing" component={BillingStack} options={{ tabBarLabel: 'Billing' }} />
+      {isDoctor && <Tab.Screen name="Income" component={IncomeStack} options={{ tabBarLabel: 'Income' }} />}
+      {isDoctor && <Tab.Screen name="Staff" component={StaffStack} options={{ tabBarLabel: 'Staff' }} />}
     </Tab.Navigator>
   );
 }
 
 function ReceptionistTabs() {
+  const { user } = useAuth();
+  const perms = user?.permissions || [];
+
+  const hasViewPatients = perms.includes('VIEW_PATIENTS') || perms.includes('MANAGE_PATIENTS');
+  const hasViewCalendar = perms.includes('VIEW_CALENDAR') || perms.includes('MANAGE_CALENDAR');
+  const hasViewAppointments = perms.includes('VIEW_APPOINTMENTS') || perms.includes('MANAGE_APPOINTMENTS');
+  const hasViewDoctors = perms.includes('VIEW_DOCTORS');
+  const hasManagePermissions = perms.includes('MANAGE_PERMISSIONS');
+  const hasViewInventory = perms.includes('VIEW_INVENTORY') || perms.includes('MANAGE_INVENTORY');
+  const hasViewBilling = perms.includes('VIEW_BILLING') || perms.includes('MANAGE_BILLING');
+  const hasViewIncome = perms.includes('VIEW_INCOME');
+
   return (
     <Tab.Navigator tabBar={(props) => <MyTabBar {...props} />} screenOptions={{ headerShown: false }}>
-      <Tab.Screen name="Patients" component={PatientStack} />
-      <Tab.Screen name="Calendar" component={CalendarStack} />
-      <Tab.Screen name="Appointments" component={AppointmentStack} />
+      {hasViewCalendar && <Tab.Screen name="Calendar" component={CalendarStack} options={{ tabBarLabel: 'Schedule' }} />}
+      {hasViewAppointments && <Tab.Screen name="Appointments" component={AppointmentStack} options={{ tabBarLabel: 'Appts' }} />}
+      {hasViewPatients && <Tab.Screen name="Patients" component={PatientStack} options={{ tabBarLabel: 'Patients' }} />}
+      {hasViewDoctors && <Tab.Screen name="Doctors" component={DoctorStack} options={{ tabBarLabel: 'Doctors' }} />}
+      {hasViewInventory && <Tab.Screen name="Inventory" component={InventoryStack} options={{ tabBarLabel: 'Stock' }} />}
+      {hasViewBilling && <Tab.Screen name="Billing" component={BillingStack} options={{ tabBarLabel: 'Billing' }} />}
+      {hasViewIncome && <Tab.Screen name="Income" component={IncomeStack} options={{ tabBarLabel: 'Income' }} />}
+      {hasManagePermissions && <Tab.Screen name="Staff" component={StaffStack} options={{ tabBarLabel: 'Staff' }} />}
     </Tab.Navigator>
   );
 }
@@ -244,9 +385,15 @@ function PatientTabs() {
 
 function AuthStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="PatientRegister" component={PatientRegisterScreen} />
+    <Stack.Navigator>
+      <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="PatientRegister" component={PatientRegisterScreen} options={{
+        headerStyle: { backgroundColor: colors.primary },
+        headerTintColor: '#FFFFFF',
+        headerTitle: 'Create Account',
+        headerShadowVisible: false,
+        headerTitleStyle: { fontWeight: '700', fontSize: 18, letterSpacing: -0.2 },
+      }} />
     </Stack.Navigator>
   );
 }
@@ -256,13 +403,17 @@ function AppContent() {
   if (!user) {
     return (
       <NavigationContainer>
-        <AuthStack />
+        <ErrorBoundary>
+          <AuthStack />
+        </ErrorBoundary>
       </NavigationContainer>
     );
   }
   return (
     <NavigationContainer>
-      {user.role === 'PATIENT' ? <PatientTabs /> : user.role === 'RECEPTIONIST' ? <ReceptionistTabs /> : <MainTabs />}
+      <ErrorBoundary>
+        {user.role === 'PATIENT' ? <PatientTabs /> : user.role === 'RECEPTIONIST' ? <ReceptionistTabs /> : <MainTabs />}
+      </ErrorBoundary>
     </NavigationContainer>
   );
 }
@@ -271,7 +422,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <AppContent />
+        <SettingsProvider>
+          <AppContent />
+        </SettingsProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
@@ -280,16 +433,15 @@ export default function App() {
 const styles = StyleSheet.create({
   tabOuter: { backgroundColor: colors.bg, paddingBottom: 8, paddingTop: 0 },
   tabBar: {
-    flexDirection: 'row', backgroundColor: colors.surface, marginHorizontal: 16,
-    borderRadius: borderRadius.xl, paddingVertical: 8, paddingHorizontal: 8,
-    ...shadows.lg, borderWidth: 1, borderColor: colors.borderLight,
+    flexDirection: 'row', backgroundColor: colors.surface, marginHorizontal: 12,
+    borderRadius: 16, paddingVertical: 4, paddingHorizontal: 4,
+    ...shadows.lg,
   },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 },
-  tabIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
-  tabIconActive: { backgroundColor: colors.primary + '15' },
-  tabIconText: { fontSize: 13, fontWeight: '800', color: colors.textMuted, letterSpacing: 0.5 },
-  tabIconTextActive: { color: colors.primary },
-  tabLabel: { fontSize: 10, fontWeight: '600', color: colors.textMuted, marginTop: 1 },
+  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
+  tabIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  tabIconActive: { backgroundColor: colors.primary },
+  tabIconText: { fontSize: 16, color: colors.tabInactive },
+  tabLabel: { fontSize: 9, fontWeight: '600', color: colors.tabInactive, marginTop: 2, letterSpacing: -0.1 },
   tabLabelActive: { color: colors.primary, fontWeight: '700' },
-  indicator: { width: 20, height: 2, borderRadius: 1, backgroundColor: colors.primary, marginTop: 3 },
+  indicator: { width: 14, height: 2.5, borderRadius: 1.25, backgroundColor: colors.primary, marginTop: 4 },
 });
