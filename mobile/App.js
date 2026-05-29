@@ -111,6 +111,7 @@ function DoctorStack() {
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} initialParams={{ isDoctor: true }} options={{ title: 'Appointment' }} />
       <Stack.Screen name="Consultation" component={ConsultationScreen} options={{ title: 'Consultation' }} />
       <Stack.Screen name="ConsultationBilling" component={ConsultationBillingScreen} options={{ title: 'Generate Bill' }} />
+      <Stack.Screen name="Income" component={IncomeDashboardScreen} options={{ title: 'Financial Reports' }} />
     </Stack.Navigator>
   );
 }
@@ -357,14 +358,13 @@ function MainTabs() {
 
   return (
     <Tab.Navigator tabBar={(props) => <MyTabBar {...props} />} screenOptions={{ headerShown: false }}>
-      {isDoctor && <Tab.Screen name="Doctor Dashboard" component={DashboardStack} options={{ tabBarLabel: 'Dashboard' }} />}
+      {isDoctor && <Tab.Screen name="Doctor Dashboard" component={DashboardStack} options={{ tabBarLabel: 'Home' }} />}
       <Tab.Screen name="Calendar" component={CalendarStack} options={{ tabBarLabel: 'Schedule' }} />
       <Tab.Screen name="Appointments" component={AppointmentStack} options={{ tabBarLabel: 'Appts' }} />
       <Tab.Screen name="Patients" component={PatientStack} options={{ tabBarLabel: 'Patients' }} />
       {isDoctor && <Tab.Screen name="Doctors" component={DoctorStack} options={{ tabBarLabel: 'Doctors' }} />}
-      <Tab.Screen name="Inventory" component={InventoryStack} options={{ tabBarLabel: 'Stock' }} />
       <Tab.Screen name="Billing" component={BillingStack} options={{ tabBarLabel: 'Billing' }} />
-      {isDoctor && <Tab.Screen name="Income" component={IncomeStack} options={{ tabBarLabel: 'Income' }} />}
+      <Tab.Screen name="Inventory" component={InventoryStack} options={{ tabBarLabel: 'Stock' }} />
       {isDoctor && <Tab.Screen name="Staff" component={StaffStack} options={{ tabBarLabel: 'Staff' }} />}
     </Tab.Navigator>
   );
@@ -459,15 +459,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     paddingBottom: 0,
     paddingTop: 0,
-    borderTopWidth: 0,
   },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
-    marginHorizontal: 0,
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    paddingBottom: 8,
+    paddingTop: 4,
+    paddingBottom: 4,
+    paddingHorizontal: 4,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },
@@ -475,18 +473,17 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 6,
     paddingHorizontal: 2,
-    borderRadius: 12,
-    marginHorizontal: 1,
+    borderRadius: 10,
   },
   tabItemActive: {
-    backgroundColor: colors.primary + '0D',
+    backgroundColor: colors.primary + '0A',
   },
   tabIcon: {
-    width: 30,
-    height: 28,
-    borderRadius: 8,
+    width: 28,
+    height: 24,
+    borderRadius: 7,
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
@@ -495,20 +492,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   tabIconText: {
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: '700',
     color: colors.tabInactive,
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
   tabLabel: {
     fontSize: 9,
-    fontWeight: '600',
+    fontWeight: '500',
     color: colors.tabInactive,
-    marginTop: 2,
-    letterSpacing: -0.1,
+    marginTop: 1,
+    letterSpacing: 0,
   },
   tabLabelActive: {
     color: colors.primary,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });

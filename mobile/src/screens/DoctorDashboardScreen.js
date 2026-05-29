@@ -97,7 +97,7 @@ export default function DoctorDashboardScreen({ navigation }) {
             const statusColor = !a.consultationStatus ? colors.warning
               : a.consultationStatus === 'COMPLETED' ? colors.success : colors.primary;
             return (
-              <TouchableOpacity key={a.appointmentId} style={styles.apptCard}
+              <TouchableOpacity key={a.id} style={styles.apptCard}
                 onPress={() => navigation.navigate('Appointments', {
                   screen: 'AppointmentDetail',
                   params: { appointment: a },

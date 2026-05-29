@@ -377,7 +377,7 @@ public class ConsultationService {
         for (Appointment a : todayAppts) {
             var existingConsultation = consultationRepository.findByAppointmentId(a.getId());
             todayItems.add(DoctorDashboardResponse.TodayAppointmentItem.builder()
-                    .appointmentId(a.getId())
+                    .id(a.getId())
                     .patientId(a.getPatient().getId())
                     .patientName(a.getPatient().getName())
                     .startTime(a.getStartTime().toString())

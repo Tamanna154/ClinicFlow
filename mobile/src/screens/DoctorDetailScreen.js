@@ -129,6 +129,17 @@ export default function DoctorDetailScreen({ route, navigation }) {
           </Section>
         )}
 
+        {canManage && (
+          <TouchableOpacity style={styles.incomeBtn} onPress={() => navigation.navigate('Income')} activeOpacity={0.8}>
+            <Text style={styles.incomeIcon}>📊</Text>
+            <View style={styles.incomeContent}>
+              <Text style={styles.incomeTitle}>Financial Reports</Text>
+              <Text style={styles.incomeSub}>Income, expenses & profit summary</Text>
+            </View>
+            <Text style={styles.incomeArrow}>›</Text>
+          </TouchableOpacity>
+        )}
+
         {doctor.consultationFee != null && (
           <Section title="Consultation Fee">
             <Text style={styles.feeText}>{formatCurrency(doctor.consultationFee)}</Text>
@@ -222,6 +233,16 @@ const styles = StyleSheet.create({
   sectionHeaderTitle: { fontSize: 15, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
   viewAll: { fontSize: 13, fontWeight: '600', color: colors.primaryLight },
   emptyText: { textAlign: 'center', color: colors.textMuted, paddingVertical: 16, fontSize: 13 },
+  incomeBtn: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl, padding: 16, marginBottom: 12,
+    borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm,
+  },
+  incomeIcon: { fontSize: 24, marginRight: 12 },
+  incomeContent: { flex: 1 },
+  incomeTitle: { fontSize: 15, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
+  incomeSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  incomeArrow: { fontSize: 22, color: colors.border, fontWeight: '300' },
   bookBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', marginTop: 8, ...shadows.sm },
   bookBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   footer: { flexDirection: 'row', padding: 16, gap: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.borderLight },
