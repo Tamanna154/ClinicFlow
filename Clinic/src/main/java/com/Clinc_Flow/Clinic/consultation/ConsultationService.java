@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +44,21 @@ public class ConsultationService {
 
         if (consultationRepository.findByAppointmentId(appointmentId).isPresent()) {
             throw new IllegalArgumentException("Consultation already exists for this appointment");
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+
+        if (appointment.getAppointmentDate().isAfter(today)) {
+            throw new IllegalArgumentException("Cannot start consultation: Appointment is scheduled for " + appointment.getAppointmentDate() + ". Please wait until the appointment date.");
+        }
+
+        if (appointment.getAppointmentDate().isBefore(today)) {
+            throw new IllegalArgumentException("Cannot start consultation: Appointment was on " + appointment.getAppointmentDate() + " (past date). Please reschedule if needed.");
+        }
+
+        if (now.isBefore(appointment.getStartTime())) {
+            throw new IllegalArgumentException("Cannot start consultation: Appointment starts at " + appointment.getStartTime() + ". Current time is " + now.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) + ". Please wait until the scheduled time.");
         }
 
         appointment.setStatus("IN_PROGRESS");
@@ -85,42 +102,44 @@ public class ConsultationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Consultation", consultationId));
 
         consultation.setStatus("COMPLETED");
-        consultation = consultationRepository.save(consultation);
+        Consultation saved = consultationRepository.save(consultation);
 
-        Appointment appointment = consultation.getAppointment();
+        Appointment appointment = saved.getAppointment();
         appointment.setStatus("COMPLETED");
-        appointment.setConsultationNotes(consultation.getDoctorNotes());
+        appointment.setConsultationNotes(saved.getDoctorNotes());
         appointmentRepository.save(appointment);
 
-        Patient patient = patientRepository.findById(consultation.getPatientId())
-                .orElseThrow(() -> new ResourceNotFoundException("Patient", consultation.getPatientId()));
+        Long patId = saved.getPatientId();
+        Patient patient = patientRepository.findById(patId)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient", patId));
 
         StringBuilder history = new StringBuilder();
+        Consultation c = saved;
         if (patient.getMedicalHistory() != null) {
             history.append(patient.getMedicalHistory()).append("\n\n");
         }
         history.append("--- Visit: ").append(LocalDate.now()).append(" ---\n");
-        if (consultation.getSymptoms() != null && !consultation.getSymptoms().isEmpty()) {
-            history.append("Symptoms: ").append(consultation.getSymptoms()).append("\n");
+        if (c.getSymptoms() != null && !c.getSymptoms().isEmpty()) {
+            history.append("Symptoms: ").append(c.getSymptoms()).append("\n");
         }
-        if (consultation.getDiagnosis() != null && !consultation.getDiagnosis().isEmpty()) {
-            history.append("Diagnosis: ").append(consultation.getDiagnosis()).append("\n");
+        if (c.getDiagnosis() != null && !c.getDiagnosis().isEmpty()) {
+            history.append("Diagnosis: ").append(c.getDiagnosis()).append("\n");
         }
-        if (consultation.getDoctorNotes() != null && !consultation.getDoctorNotes().isEmpty()) {
-            history.append("Notes: ").append(consultation.getDoctorNotes()).append("\n");
+        if (c.getDoctorNotes() != null && !c.getDoctorNotes().isEmpty()) {
+            history.append("Notes: ").append(c.getDoctorNotes()).append("\n");
         }
         patient.setMedicalHistory(history.toString());
         patientRepository.save(patient);
 
         try {
             PatientVisit visit = PatientVisit.builder()
-                    .patientId(consultation.getPatientId())
-                    .doctorId(consultation.getDoctorId())
+                    .patientId(c.getPatientId())
+                    .doctorId(c.getDoctorId())
                     .appointmentId(appointment.getId())
                     .visitDate(OffsetDateTime.now())
-                    .diagnosis(consultation.getDiagnosis())
-                    .prescription(consultation.getDoctorNotes())
-                    .additionalNotes(consultation.getSymptoms())
+                    .diagnosis(c.getDiagnosis())
+                    .prescription(c.getDoctorNotes())
+                    .additionalNotes(c.getSymptoms())
                     .build();
             patientVisitRepository.save(visit);
         } catch (Exception e) {

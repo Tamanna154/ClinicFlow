@@ -54,18 +54,16 @@ const headerOpts = {
 };
 
   const TAB_ICONS = {
-  Patients: '👤', Doctors: '⚕', Appointments: '📅', Appts: '📅',
-  Calendar: '📋', Schedule: '📋',
-  Dashboard: '⌂', 'My Appointments': '📅', 'My Profile': '⚙', 'My Bookings': '📅',
-  Staff: '👥', Inventory: '📦', Stock: '📦',
-  Billing: '💰', Income: '📊',
-  'Doctor Dashboard': '🏥',
+  Dashboard: 'D', Schedule: 'S', Appts: 'A', Patients: 'P',
+  Doctors: 'Dr', Stock: 'St', Billing: 'B', Income: 'I', Staff: 'Stf',
+  'Doctor Dashboard': 'D',
 };
 
 function TabIcon({ label, focused }) {
+  const icon = TAB_ICONS[label] || (label ? label.charAt(0).toUpperCase() : '?');
   return (
     <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
-      <Text style={[styles.tabIconText, focused && { color: '#FFFFFF' }]}>{TAB_ICONS[label] || '?'}</Text>
+      <Text style={[styles.tabIconText, focused && { color: '#FFFFFF' }]}>{icon}</Text>
     </View>
   );
 }
@@ -334,13 +332,17 @@ function MyTabBar({ state, descriptors, navigation }) {
           const label = options.tabBarLabel || route.name;
           const isFocused = state.index === index;
           return (
-            <TouchableOpacity key={route.key} style={styles.tabItem} onPress={() => {
-              const ev = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-              if (!isFocused && !ev.defaultPrevented) navigation.navigate(route.name);
-            }}>
+            <TouchableOpacity
+              key={route.key}
+              style={[styles.tabItem, isFocused && styles.tabItemActive]}
+              onPress={() => {
+                const ev = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+                if (!isFocused && !ev.defaultPrevented) navigation.navigate(route.name);
+              }}
+              activeOpacity={0.7}
+            >
               <TabIcon label={label} focused={isFocused} />
               <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>{label}</Text>
-              {isFocused && <View style={styles.indicator} />}
             </TouchableOpacity>
           );
         })}
@@ -453,17 +455,60 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  tabOuter: { backgroundColor: colors.bg, paddingBottom: 8, paddingTop: 0 },
-  tabBar: {
-    flexDirection: 'row', backgroundColor: colors.surface, marginHorizontal: 12,
-    borderRadius: 16, paddingVertical: 4, paddingHorizontal: 4,
-    ...shadows.lg,
+  tabOuter: {
+    backgroundColor: colors.bg,
+    paddingBottom: 0,
+    paddingTop: 0,
+    borderTopWidth: 0,
   },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
-  tabIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
-  tabIconActive: { backgroundColor: colors.primary },
-  tabIconText: { fontSize: 16, color: colors.tabInactive },
-  tabLabel: { fontSize: 9, fontWeight: '600', color: colors.tabInactive, marginTop: 2, letterSpacing: -0.1 },
-  tabLabelActive: { color: colors.primary, fontWeight: '700' },
-  indicator: { width: 14, height: 2.5, borderRadius: 1.25, backgroundColor: colors.primary, marginTop: 4 },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    marginHorizontal: 0,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    borderRadius: 12,
+    marginHorizontal: 1,
+  },
+  tabItemActive: {
+    backgroundColor: colors.primary + '0D',
+  },
+  tabIcon: {
+    width: 30,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tabIconActive: {
+    backgroundColor: colors.primary,
+  },
+  tabIconText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.tabInactive,
+    letterSpacing: -0.3,
+  },
+  tabLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: colors.tabInactive,
+    marginTop: 2,
+    letterSpacing: -0.1,
+  },
+  tabLabelActive: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
 });
