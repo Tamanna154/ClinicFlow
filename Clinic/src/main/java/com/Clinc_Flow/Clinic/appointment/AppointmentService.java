@@ -121,6 +121,10 @@ public class AppointmentService {
         }
 
         Boolean isOnline = request.getIsOnline() != null && request.getIsOnline();
+        String apptType = request.getAppointmentType();
+        if (apptType == null) {
+            apptType = isOnline ? "ONLINE" : "IN_PERSON";
+        }
         Appointment appointment = Appointment.builder()
                 .doctor(doctor)
                 .patient(patient)
@@ -130,6 +134,7 @@ public class AppointmentService {
                 .status(request.getStatus() != null ? request.getStatus() : "SCHEDULED")
                 .reason(request.getReason())
                 .notes(request.getNotes())
+                .appointmentType(apptType)
                 .isOnline(isOnline)
                 .meetingLink(isOnline ? request.getMeetingLink() : null)
                 .consultationNotes(request.getConsultationNotes())
@@ -155,7 +160,7 @@ public class AppointmentService {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment", id));
 
-        String validStatuses = "SCHEDULED,CONFIRMED,IN_PROGRESS,COMPLETED,CANCELLED,NO_SHOW";
+        String validStatuses = "SCHEDULED,CONFIRMED,PATIENT_ARRIVED,IN_PROGRESS,CONSULTATION_COMPLETED,COMPLETED,CANCELLED,NO_SHOW";
         if (!validStatuses.contains(status.toUpperCase())) {
             throw new IllegalArgumentException("Invalid status. Must be one of: " + validStatuses);
         }
@@ -222,6 +227,7 @@ public class AppointmentService {
         Boolean isOnline = request.getIsOnline() != null && request.getIsOnline();
         appointment.setIsOnline(isOnline);
         appointment.setMeetingLink(isOnline ? request.getMeetingLink() : null);
+        if (request.getAppointmentType() != null) appointment.setAppointmentType(request.getAppointmentType());
         appointment.setConsultationNotes(request.getConsultationNotes());
 
         return AppointmentResponse.fromEntity(appointmentRepository.save(appointment));

@@ -1,0 +1,263 @@
+import React, { useState, useCallback } from 'react';
+import {
+  View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet,
+  Alert, ActivityIndicator,
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { consultationApi } from '../api/consultationApi';
+import { appointmentApi } from '../api/appointmentApi';
+import { colors, borderRadius, shadows } from '../theme';
+import { useSettings } from '../context/SettingsContext';
+
+export default function ConsultationScreen({ route, navigation }) {
+  const { appointment } = route.params;
+  const [consultation, setConsultation] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [started, setStarted] = useState(false);
+
+  const [symptoms, setSymptoms] = useState('');
+  const [diagnosis, setDiagnosis] = useState('');
+  const [doctorNotes, setDoctorNotes] = useState('');
+  const [bloodPressure, setBloodPressure] = useState('');
+  const [pulseRate, setPulseRate] = useState('');
+  const [weight, setWeight] = useState('');
+  const [height, setHeight] = useState('');
+  const [temperature, setTemperature] = useState('');
+  const [oxygenLevel, setOxygenLevel] = useState('');
+  const [followUpDate, setFollowUpDate] = useState('');
+  const { formatCurrency } = useSettings();
+
+  useFocusEffect(useCallback(() => {
+    loadConsultation();
+  }, []));
+
+  const loadConsultation = async () => {
+    try {
+      const existing = await consultationApi.getByAppointment(appointment.id);
+      setConsultation(existing);
+      setSymptoms(existing.symptoms || '');
+      setDiagnosis(existing.diagnosis || '');
+      setDoctorNotes(existing.doctorNotes || '');
+      setBloodPressure(existing.bloodPressure || '');
+      setPulseRate(existing.pulseRate != null ? String(existing.pulseRate) : '');
+      setWeight(existing.weight != null ? String(existing.weight) : '');
+      setHeight(existing.height != null ? String(existing.height) : '');
+      setTemperature(existing.temperature != null ? String(existing.temperature) : '');
+      setOxygenLevel(existing.oxygenLevel != null ? String(existing.oxygenLevel) : '');
+      setFollowUpDate(existing.followUpDate || '');
+      setStarted(true);
+    } catch (e) {
+      setConsultation(null);
+      setStarted(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartConsultation = async () => {
+    setLoading(true);
+    try {
+      const result = await consultationApi.startConsultation(appointment.id);
+      setConsultation(result);
+      setStarted(true);
+      await appointmentApi.updateStatus(appointment.id, 'IN_PROGRESS');
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!consultation && !started) return;
+    setSaving(true);
+    try {
+      const id = consultation ? consultation.id : (await consultationApi.startConsultation(appointment.id)).id;
+      await consultationApi.updateConsultation(id, {
+        symptoms: symptoms.trim() || null,
+        diagnosis: diagnosis.trim() || null,
+        doctorNotes: doctorNotes.trim() || null,
+        bloodPressure: bloodPressure.trim() || null,
+        pulseRate: pulseRate ? parseInt(pulseRate) : null,
+        weight: weight ? parseFloat(weight) : null,
+        height: height ? parseFloat(height) : null,
+        temperature: temperature ? parseFloat(temperature) : null,
+        oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null,
+        followUpDate: followUpDate.trim() || null,
+      });
+      const updated = await consultationApi.getByAppointment(appointment.id);
+      setConsultation(updated);
+      Alert.alert('Saved', 'Consultation notes saved');
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!consultation && !started) return;
+    Alert.alert('Complete Consultation', 'Mark this consultation as complete?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Complete',
+        onPress: async () => {
+          setSaving(true);
+          try {
+            const id = consultation ? consultation.id : (await consultationApi.startConsultation(appointment.id)).id;
+            await consultationApi.updateConsultation(id, {
+              symptoms: symptoms.trim() || null,
+              diagnosis: diagnosis.trim() || null,
+              doctorNotes: doctorNotes.trim() || null,
+              bloodPressure: bloodPressure.trim() || null,
+              pulseRate: pulseRate ? parseInt(pulseRate) : null,
+              weight: weight ? parseFloat(weight) : null,
+              height: height ? parseFloat(height) : null,
+              temperature: temperature ? parseFloat(temperature) : null,
+              oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null,
+              followUpDate: followUpDate.trim() || null,
+            });
+            await consultationApi.completeConsultation(id);
+            Alert.alert('Completed', 'Consultation completed. Generate bill?', [
+              { text: 'Later', onPress: () => navigation.goBack() },
+              { text: 'Generate Bill', onPress: () => navigation.replace('ConsultationBilling', { consultationId: id, appointment, patientName: appointment.patientName }) },
+            ]);
+          } catch (e) {
+            Alert.alert('Error', e.message);
+          } finally {
+            setSaving(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <Text style={styles.patientName}>{appointment.patientName}</Text>
+        <Text style={styles.apptInfo}>{appointment.appointmentDate} | {appointment.startTime} - {appointment.endTime}</Text>
+        <View style={[styles.typeBadge, { backgroundColor: appointment.isOnline ? colors.infoLight : colors.successLight }]}>
+          <Text style={[styles.typeText, { color: appointment.isOnline ? colors.info : colors.success }]}>
+            {appointment.isOnline ? 'Online' : 'In-Person'}
+          </Text>
+        </View>
+      </View>
+
+      {!started ? (
+        <TouchableOpacity style={styles.startBtn} onPress={handleStartConsultation} activeOpacity={0.8}>
+          <Text style={styles.startBtnText}>Start Consultation</Text>
+        </TouchableOpacity>
+      ) : (
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Symptoms</Text>
+            <TextInput style={styles.input} value={symptoms} onChangeText={setSymptoms} placeholder="e.g. Fever, Headache, Cough" placeholderTextColor={colors.textMuted} multiline />
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Diagnosis</Text>
+            <TextInput style={styles.input} value={diagnosis} onChangeText={setDiagnosis} placeholder="e.g. Viral Fever, Migraine" placeholderTextColor={colors.textMuted} multiline />
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Doctor Notes / Prescription</Text>
+            <TextInput style={[styles.input, { minHeight: 80 }]} value={doctorNotes} onChangeText={setDoctorNotes} placeholder="Notes, prescription, advice..." placeholderTextColor={colors.textMuted} multiline />
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Vitals</Text>
+            <View style={styles.vitalsGrid}>
+              <View style={styles.vitalItem}>
+                <Text style={styles.vitalLabel}>BP (mmHg)</Text>
+                <TextInput style={styles.vitalInput} value={bloodPressure} onChangeText={setBloodPressure} placeholder="120/80" placeholderTextColor={colors.textMuted} />
+              </View>
+              <View style={styles.vitalItem}>
+                <Text style={styles.vitalLabel}>Pulse (bpm)</Text>
+                <TextInput style={styles.vitalInput} value={pulseRate} onChangeText={setPulseRate} placeholder="72" placeholderTextColor={colors.textMuted} keyboardType="numeric" />
+              </View>
+              <View style={styles.vitalItem}>
+                <Text style={styles.vitalLabel}>Weight (kg)</Text>
+                <TextInput style={styles.vitalInput} value={weight} onChangeText={setWeight} placeholder="70" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" />
+              </View>
+              <View style={styles.vitalItem}>
+                <Text style={styles.vitalLabel}>Height (cm)</Text>
+                <TextInput style={styles.vitalInput} value={height} onChangeText={setHeight} placeholder="170" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" />
+              </View>
+              <View style={styles.vitalItem}>
+                <Text style={styles.vitalLabel}>Temp (°F)</Text>
+                <TextInput style={styles.vitalInput} value={temperature} onChangeText={setTemperature} placeholder="98.6" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" />
+              </View>
+              <View style={styles.vitalItem}>
+                <Text style={styles.vitalLabel}>SpO2 (%)</Text>
+                <TextInput style={styles.vitalInput} value={oxygenLevel} onChangeText={setOxygenLevel} placeholder="98" placeholderTextColor={colors.textMuted} keyboardType="numeric" />
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Follow-Up</Text>
+            <TextInput style={styles.input} value={followUpDate} onChangeText={setFollowUpDate} placeholder="YYYY-MM-DD or 3d, 7d, 15d" placeholderTextColor={colors.textMuted} />
+            <View style={styles.followUpBtns}>
+              {['3d', '7d', '15d', '30d'].map(opt => (
+                <TouchableOpacity key={opt} style={styles.followUpBtn} onPress={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + parseInt(opt));
+                  setFollowUpDate(d.toISOString().split('T')[0]);
+                }} activeOpacity={0.7}>
+                  <Text style={styles.followUpBtnText}>{opt}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.actionRow}>
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving} activeOpacity={0.8}>
+              {saving ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={styles.saveBtnText}>Save</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.completeBtn} onPress={handleComplete} disabled={saving} activeOpacity={0.8}>
+              <Text style={styles.completeBtnText}>Complete Consultation</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { padding: 16, paddingBottom: 40 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
+  header: { backgroundColor: colors.surface, borderRadius: borderRadius.xl, padding: 20, marginBottom: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.borderLight, ...shadows.md },
+  patientName: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
+  apptInfo: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
+  typeBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, marginTop: 8 },
+  typeText: { fontSize: 12, fontWeight: '700' },
+  startBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 16, alignItems: 'center', marginBottom: 16, ...shadows.md },
+  startBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  section: { backgroundColor: colors.surface, borderRadius: borderRadius.xl, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm },
+  sectionTitle: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 },
+  input: { backgroundColor: colors.bg, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border, padding: 12, fontSize: 14, color: colors.text, fontWeight: '500', minHeight: 44, textAlignVertical: 'top' },
+  vitalsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  vitalItem: { width: '30%' },
+  vitalLabel: { fontSize: 10, fontWeight: '600', color: colors.textSecondary, marginBottom: 4, marginLeft: 2 },
+  vitalInput: { backgroundColor: colors.bg, borderRadius: borderRadius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: colors.text, fontWeight: '600', textAlign: 'center' },
+  followUpBtns: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  followUpBtn: { backgroundColor: colors.primary + '10', borderRadius: borderRadius.sm, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: colors.primary + '20' },
+  followUpBtnText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  actionRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  saveBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', ...shadows.sm },
+  saveBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  completeBtn: { flex: 1, backgroundColor: colors.success, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', ...shadows.sm },
+  completeBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+});

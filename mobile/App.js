@@ -37,6 +37,9 @@ import BillDetailScreen from './src/screens/BillDetailScreen';
 import IncomeDashboardScreen from './src/screens/IncomeDashboardScreen';
 import CurrencySettingsScreen from './src/screens/CurrencySettingsScreen';
 import AddExpenseScreen from './src/screens/AddExpenseScreen';
+import ConsultationScreen from './src/screens/ConsultationScreen';
+import ConsultationBillingScreen from './src/screens/ConsultationBillingScreen';
+import DoctorDashboardScreen from './src/screens/DoctorDashboardScreen';
 
 import ErrorBoundary from './src/components/ErrorBoundary';
 
@@ -50,12 +53,13 @@ const headerOpts = {
   headerShadowVisible: false,
 };
 
-const TAB_ICONS = {
+  const TAB_ICONS = {
   Patients: '👤', Doctors: '⚕', Appointments: '📅', Appts: '📅',
   Calendar: '📋', Schedule: '📋',
   Dashboard: '⌂', 'My Appointments': '📅', 'My Profile': '⚙', 'My Bookings': '📅',
   Staff: '👥', Inventory: '📦', Stock: '📦',
   Billing: '💰', Income: '📊',
+  'Doctor Dashboard': '🏥',
 };
 
 function TabIcon({ label, focused }) {
@@ -106,7 +110,20 @@ function DoctorStack() {
       <Stack.Screen name="DoctorDetail" component={DoctorDetailScreen} options={({ route }) => ({ title: `Dr. ${route.params?.doctor?.name || 'Doctor'}` })} />
       <Stack.Screen name="AppointmentList" component={AppointmentListScreen} options={({ route }) => ({ title: route.params?.doctorName ? `Dr. ${route.params.doctorName}` : 'Appointments' })} />
       <Stack.Screen name="AppointmentBooking" component={AppointmentBookingScreen} options={{ title: 'Book Appointment' }} />
-      <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} options={{ title: 'Appointment' }} />
+      <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} initialParams={{ isDoctor: true }} options={{ title: 'Appointment' }} />
+      <Stack.Screen name="Consultation" component={ConsultationScreen} options={{ title: 'Consultation' }} />
+      <Stack.Screen name="ConsultationBilling" component={ConsultationBillingScreen} options={{ title: 'Generate Bill' }} />
+    </Stack.Navigator>
+  );
+}
+
+function DashboardStack() {
+  return (
+    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
+      <Stack.Screen name="DoctorDashboard" component={DoctorDashboardScreen} options={{ title: 'Dashboard' }} />
+      <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} initialParams={{ isDoctor: true }} options={{ title: 'Appointment' }} />
+      <Stack.Screen name="Consultation" component={ConsultationScreen} options={{ title: 'Consultation' }} />
+      <Stack.Screen name="ConsultationBilling" component={ConsultationBillingScreen} options={{ title: 'Generate Bill' }} />
     </Stack.Navigator>
   );
 }
@@ -116,7 +133,9 @@ function AppointmentStack() {
     <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
       <Stack.Screen name="AppointmentList" component={AppointmentListScreen} options={{ title: 'Appointments' }} />
       <Stack.Screen name="AppointmentBooking" component={AppointmentBookingScreen} options={{ title: 'Book Appointment' }} />
-      <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} options={{ title: 'Appointment' }} />
+      <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} initialParams={{ isDoctor: true }} options={{ title: 'Appointment' }} />
+      <Stack.Screen name="Consultation" component={ConsultationScreen} options={{ title: 'Consultation' }} />
+      <Stack.Screen name="ConsultationBilling" component={ConsultationBillingScreen} options={{ title: 'Generate Bill' }} />
     </Stack.Navigator>
   );
 }
@@ -126,7 +145,9 @@ function CalendarStack() {
     <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
       <Stack.Screen name="CalendarMain" component={CalendarScreen} options={{ title: 'Schedule' }} />
       <Stack.Screen name="CalendarBooking" component={AppointmentBookingScreen} options={{ title: 'Book Appointment' }} />
-      <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} options={{ title: 'Appointment' }} />
+      <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} initialParams={{ isDoctor: true }} options={{ title: 'Appointment' }} />
+      <Stack.Screen name="Consultation" component={ConsultationScreen} options={{ title: 'Consultation' }} />
+      <Stack.Screen name="ConsultationBilling" component={ConsultationBillingScreen} options={{ title: 'Generate Bill' }} />
     </Stack.Navigator>
   );
 }
@@ -334,6 +355,7 @@ function MainTabs() {
 
   return (
     <Tab.Navigator tabBar={(props) => <MyTabBar {...props} />} screenOptions={{ headerShown: false }}>
+      {isDoctor && <Tab.Screen name="Doctor Dashboard" component={DashboardStack} options={{ tabBarLabel: 'Dashboard' }} />}
       <Tab.Screen name="Calendar" component={CalendarStack} options={{ tabBarLabel: 'Schedule' }} />
       <Tab.Screen name="Appointments" component={AppointmentStack} options={{ tabBarLabel: 'Appts' }} />
       <Tab.Screen name="Patients" component={PatientStack} options={{ tabBarLabel: 'Patients' }} />

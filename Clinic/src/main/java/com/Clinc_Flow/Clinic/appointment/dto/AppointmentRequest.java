@@ -33,6 +33,8 @@ public class AppointmentRequest {
 
     private String status;
 
+    private String appointmentType;
+
     private Boolean isOnline;
 
     private String meetingLink;

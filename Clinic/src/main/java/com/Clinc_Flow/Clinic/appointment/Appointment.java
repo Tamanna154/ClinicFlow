@@ -52,6 +52,9 @@ public class Appointment {
     @Column(name = "google_event_id", length = 255)
     private String googleEventId;
 
+    @Column(name = "appointment_type", length = 20)
+    private String appointmentType;
+
     @Column(name = "is_online", nullable = false)
     private Boolean isOnline = false;
 

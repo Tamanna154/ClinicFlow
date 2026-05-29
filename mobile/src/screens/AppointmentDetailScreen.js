@@ -1,14 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator, Linking, TextInput,
+  Alert, ActivityIndicator, Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { appointmentApi } from '../api/appointmentApi';
+import { consultationApi } from '../api/consultationApi';
 import { reminderApi } from '../api/reminderApi';
-import { patientApi } from '../api/patientApi';
 import { usePermission } from '../hooks/usePermission';
-import { colors, shadows, borderRadius, typography, getStatusStyle } from '../theme';
+import { colors, shadows, borderRadius, getStatusStyle } from '../theme';
 
 const STATUS_FLOW = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED'];
 
@@ -37,14 +37,14 @@ function Row({ icon, label, value, isLink }) {
 export default function AppointmentDetailScreen({ route, navigation }) {
   const initial = route.params.appointment;
   const [appointment, setAppointment] = useState(initial);
+  const [consultation, setConsultation] = useState(null);
   const [reminders, setReminders] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [reminderLoading, setReminderLoading] = useState(false);
-  const [visitNotes, setVisitNotes] = useState('');
-  const [savingNotes, setSavingNotes] = useState(false);
 
   const { hasPermission } = usePermission();
   const canManage = hasPermission('MANAGE_APPOINTMENTS');
+  const isDoctor = route.params.isDoctor;
 
   useFocusEffect(useCallback(() => {
     let mounted = true;
@@ -52,8 +52,8 @@ export default function AppointmentDetailScreen({ route, navigation }) {
       try {
         const f = await appointmentApi.getById(initial.id);
         if (mounted) setAppointment(f);
-        try { const r = await reminderApi.getByAppointment(initial.id); if (mounted) setReminders(r); }
-        catch (e) { /* reminders may not exist yet */ }
+        try { const r = await reminderApi.getByAppointment(initial.id); if (mounted) setReminders(r); } catch (e) {}
+        try { const c = await consultationApi.getByAppointment(initial.id); if (mounted) setConsultation(c); } catch (e) {}
       } catch (e) { console.log(e.message); }
     })();
     return () => { mounted = false; };
@@ -64,7 +64,7 @@ export default function AppointmentDetailScreen({ route, navigation }) {
     try {
       const r = await reminderApi.create(appointment.id, hoursBefore);
       setReminders(prev => [...prev, r]);
-      Alert.alert('Reminder Set', `SMS reminder will be sent ${hoursBefore}h before the appointment.`);
+      Alert.alert('Reminder Set', `SMS reminder will be sent ${hoursBefore}h before.`);
     } catch (e) { Alert.alert('Error', e.message); }
     finally { setReminderLoading(false); }
   };
@@ -73,12 +73,29 @@ export default function AppointmentDetailScreen({ route, navigation }) {
   const ss = getStatusStyle(status);
   const idx = STATUS_FLOW.indexOf(status);
   const canAdvance = idx >= 0 && idx < STATUS_FLOW.length - 1;
+  const canStartConsultation = ['SCHEDULED', 'CONFIRMED'].includes(status) && !consultation;
 
   const changeStatus = async (newStatus) => {
     setActionLoading(true);
     try { const u = await appointmentApi.updateStatus(appointment.id, newStatus); setAppointment(u); }
     catch (e) { Alert.alert('Error', e.message); }
     finally { setActionLoading(false); }
+  };
+
+  const handleStartConsultation = () => {
+    navigation.navigate('Consultation', {
+      appointment,
+      isOnline: appointment.isOnline,
+    });
+  };
+
+  const handleJoinMeeting = () => {
+    const link = appointment.meetingLink;
+    if (!link) {
+      Alert.alert('No Meeting Link', 'No meeting link configured for this appointment.');
+      return;
+    }
+    Linking.openURL(link).catch(() => Alert.alert('Error', 'Could not open meeting link'));
   };
 
   const handleCancel = () => {
@@ -98,17 +115,6 @@ export default function AppointmentDetailScreen({ route, navigation }) {
         finally { setActionLoading(false); }
       } },
     ]);
-  };
-
-  const handleSaveVisitNotes = async () => {
-    if (!visitNotes.trim()) return;
-    setSavingNotes(true);
-    try {
-      await appointmentApi.addVisitNotes(appointment.id, visitNotes);
-      Alert.alert('Saved', 'Visit notes added.');
-      setVisitNotes('');
-    } catch (e) { Alert.alert('Error', e.message); }
-    finally { setSavingNotes(false); }
   };
 
   const date = appointment.appointmentDate
@@ -144,28 +150,59 @@ export default function AppointmentDetailScreen({ route, navigation }) {
 
         <Section title="Details">
           <Row icon="📝" label="Reason" value={appointment.reason} />
-          <Row icon="🔗" label="Type" value={appointment.isOnline ? 'Online Consultation' : 'In-Person Visit'} />
+          <Row icon="🔗" label="Type" value={
+            appointment.appointmentType === 'ONLINE' ? 'Online Consultation'
+            : appointment.appointmentType === 'IN_PERSON' ? 'In-Person Visit'
+            : appointment.isOnline ? 'Online Consultation' : 'In-Person Visit'
+          } />
+          {appointment.meetingLink && <Row icon="🔗" label="Meeting Link" value={appointment.meetingLink} isLink />}
         </Section>
 
-        <Section title="Visit Notes">
-          <TextInput
-            style={styles.notesInput}
-            placeholder="Add visit notes..."
-            placeholderTextColor={colors.textMuted}
-            value={visitNotes}
-            onChangeText={setVisitNotes}
-            multiline
-            numberOfLines={3}
-          />
-          <TouchableOpacity
-            style={[styles.saveNotesBtn, (!visitNotes.trim() || savingNotes) && { opacity: 0.5 }]}
-            onPress={handleSaveVisitNotes}
-            disabled={!visitNotes.trim() || savingNotes}
-            activeOpacity={0.8}
-          >
-            {savingNotes ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.saveNotesText}>Save Notes</Text>}
+        {consultation && (
+          <Section title="Consultation">
+            <Row icon="🩺" label="Diagnosis" value={consultation.diagnosis} />
+            <Row icon="📋" label="Symptoms" value={consultation.symptoms} />
+            <Row icon="💊" label="Notes" value={consultation.doctorNotes} />
+            <Row icon="❤️" label="BP" value={consultation.bloodPressure} />
+            <Row icon="💓" label="Pulse" value={consultation.pulseRate ? `${consultation.pulseRate} bpm` : null} />
+            <Row icon="⚖️" label="Weight" value={consultation.weight ? `${consultation.weight} kg` : null} />
+            <Row icon="🌡️" label="Temp" value={consultation.temperature ? `${consultation.temperature} °F` : null} />
+            <Row icon="🫁" label="SpO2" value={consultation.oxygenLevel ? `${consultation.oxygenLevel}%` : null} />
+            {consultation.followUpDate && <Row icon="📅" label="Follow-Up" value={consultation.followUpDate} />}
+          </Section>
+        )}
+
+        {isDoctor && canStartConsultation && (
+          <View style={styles.consultActionRow}>
+            {appointment.isOnline && appointment.meetingLink && (
+              <TouchableOpacity style={styles.joinBtn} onPress={handleJoinMeeting} activeOpacity={0.8}>
+                <Text style={styles.joinBtnText}>Join Meeting</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.startConsultBtn} onPress={handleStartConsultation} activeOpacity={0.8}>
+              <Text style={styles.startConsultBtnText}>Start Consultation</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {consultation && consultation.status === 'COMPLETED' && !consultation.bill && (
+          <TouchableOpacity style={styles.billBtn}
+            onPress={() => navigation.navigate('ConsultationBilling', {
+              consultationId: consultation.id,
+              appointment,
+              patientName: appointment.patientName,
+            })}
+            activeOpacity={0.8}>
+            <Text style={styles.billBtnText}>Generate Consultation Bill</Text>
           </TouchableOpacity>
-        </Section>
+        )}
+
+        {consultation?.bill && (
+          <Section title="Bill">
+            <Row icon="💰" label="Total" value={`₹${consultation.bill.totalAmount}`} />
+            <Row icon="✅" label="Status" value={consultation.bill.paymentStatus} />
+          </Section>
+        )}
 
         <Section title="Reminders">
           {reminders.length > 0 ? (
@@ -249,13 +286,13 @@ const styles = StyleSheet.create({
   rowContent: { flex: 1 },
   rowLabel: { fontSize: 11, fontWeight: '600', color: colors.textMuted, marginBottom: 1 },
   rowValue: { fontSize: 14, fontWeight: '600', color: colors.text },
-  notesInput: {
-    backgroundColor: colors.bg, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border,
-    padding: 12, fontSize: 14, color: colors.text, fontWeight: '500', minHeight: 70,
-    textAlignVertical: 'top', marginBottom: 8,
-  },
-  saveNotesBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 10, alignItems: 'center' },
-  saveNotesText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  consultActionRow: { gap: 8, marginBottom: 12 },
+  startConsultBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', ...shadows.md },
+  startConsultBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  joinBtn: { backgroundColor: colors.info, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', ...shadows.sm },
+  joinBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  billBtn: { backgroundColor: colors.success, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', marginBottom: 12, ...shadows.md },
+  billBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
   reminderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   reminderTime: { fontSize: 13, fontWeight: '600', color: colors.text },
   reminderStatus: { fontSize: 12, fontWeight: '600', color: colors.textMuted },

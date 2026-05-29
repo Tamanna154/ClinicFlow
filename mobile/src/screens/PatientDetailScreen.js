@@ -6,6 +6,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { patientApi } from '../api/patientApi';
 import { billingApi } from '../api/billingApi';
+import { consultationApi } from '../api/consultationApi';
 import { useAuth } from '../context/AuthContext';
 import { usePermission } from '../hooks/usePermission';
 import { useSettings } from '../context/SettingsContext';
@@ -47,6 +48,7 @@ export default function PatientDetailScreen({ route, navigation }) {
   const [patient, setPatient] = useState(initial);
   const [visits, setVisits] = useState([]);
   const [bills, setBills] = useState([]);
+  const [consultations, setConsultations] = useState([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { hasPermission } = usePermission();
@@ -62,6 +64,8 @@ export default function PatientDetailScreen({ route, navigation }) {
       try { const v = await patientApi.getVisits(initial.id); if (mounted) setVisits(v); }
       catch (e) { console.log(e.message); }
       try { const b = await billingApi.getAll(); if (mounted) setBills(b.filter(bill => bill.patientId === initial.id)); }
+      catch (e) { console.log(e.message); }
+      try { const c = await consultationApi.getPatientHistory(initial.id); if (mounted) setConsultations(c); }
       catch (e) { console.log(e.message); }
     })();
     return () => { mounted = false; };
@@ -129,6 +133,25 @@ export default function PatientDetailScreen({ route, navigation }) {
           <Row icon="👤" label="Name" value={patient.emergencyContactName} />
           <Row icon="📞" label="Phone" value={patient.emergencyContactPhone} isLink />
         </Section>
+
+        {consultations.length > 0 && (
+          <Section title={`Consultation History (${consultations.length})`}>
+            {consultations.map((c) => (
+              <View key={c.id} style={styles.visitCard}>
+                <View style={styles.visitHeader}>
+                  <Text style={styles.visitDate}>{formatDate(c.createdAt)}</Text>
+                  {c.diagnosis && <Text style={styles.visitDoctor}>{c.diagnosis}</Text>}
+                </View>
+                {c.symptoms && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>Symptoms: </Text>{c.symptoms}</Text>}
+                {c.doctorNotes && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>Notes: </Text>{c.doctorNotes}</Text>}
+                {c.bloodPressure && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>BP: </Text>{c.bloodPressure}</Text>}
+                {c.weight && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>Weight: </Text>{c.weight} kg</Text>}
+                {c.followUpDate && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>Follow-Up: </Text>{c.followUpDate}</Text>}
+                {c.bill && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>Bill: </Text>{formatCurrency(c.bill.totalAmount)} - {c.bill.paymentStatus}</Text>}
+              </View>
+            ))}
+          </Section>
+        )}
 
         {visits.length > 0 && (
           <Section title={`Visit History (${visits.length})`}>
