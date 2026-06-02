@@ -24,6 +24,8 @@ public class DoctorRequest {
     @Size(max = 20)
     private String phone;
 
+    private String address;
+
     @Size(max = 100)
     private String specialization;
 
@@ -40,4 +42,6 @@ public class DoctorRequest {
     private Boolean googleCalendarEnabled;
 
     private List<AchievementDto> achievements;
+
+    private Long clinicId;
 }

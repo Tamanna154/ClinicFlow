@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, RefreshControl,
+  ActivityIndicator, Alert, RefreshControl, Platform, StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { doctorApi } from '../api/doctorApi';
@@ -9,6 +9,7 @@ import { scheduleApi } from '../api/scheduleApi';
 import { colors, borderRadius, shadows } from '../theme';
 
 const VIEWS = ['daily', 'weekly', 'monthly'];
+const STATUSBAR_H = Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 36);
 
 function todayStr() {
   const d = new Date();

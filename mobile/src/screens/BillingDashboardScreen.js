@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, RefreshControl, Dimensions,
+  ActivityIndicator, Alert, RefreshControl, Dimensions, Platform, StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { BarChart, PieChart } from 'react-native-chart-kit';
@@ -11,6 +11,7 @@ import { useSettings } from '../context/SettingsContext';
 import { colors, borderRadius, shadows } from '../theme';
 
 const SCREEN_W = Dimensions.get('window').width - 32;
+const STATUSBAR_H = Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 36);
 
 const chartConfig = {
   backgroundGradientFrom: '#fff',

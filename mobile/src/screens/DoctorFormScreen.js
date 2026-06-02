@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { doctorApi } from '../api/doctorApi';
+import { clinicApi } from '../api/clinicApi';
 import { colors, borderRadius, shadows, typography } from '../theme';
 
 export default function DoctorFormScreen({ route, navigation }) {
@@ -14,20 +15,27 @@ export default function DoctorFormScreen({ route, navigation }) {
     name: existing?.name ?? '',
     email: existing?.email ?? '',
     phone: existing?.phone ?? '',
+    address: existing?.address ?? '',
     specialization: existing?.specialization ?? '',
     qualifications: existing?.qualifications ?? '',
     bio: existing?.bio ?? '',
     consultationFee: existing?.consultationFee != null ? String(existing.consultationFee) : '',
     isActive: existing?.isActive !== false,
     googleCalendarEnabled: existing?.googleCalendarEnabled ?? false,
+    clinicId: existing?.clinicId ?? null,
   });
 
   const [achievements, setAchievements] = useState(
     existing?.achievements?.length ? existing.achievements.map(a => ({ ...a })) : []
   );
 
+  const [clinics, setClinics] = useState([]);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    clinicApi.getAll().then(setClinics).catch(() => {});
+  }, []);
 
   const updateField = (key, value) => {
     setForm({ ...form, [key]: value });
@@ -65,10 +73,12 @@ export default function DoctorFormScreen({ route, navigation }) {
     try {
       const payload = {
         name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() || null,
+        address: form.address.trim() || null,
         specialization: form.specialization.trim() || null, qualifications: form.qualifications.trim() || null,
         bio: form.bio.trim() || null, consultationFee: form.consultationFee ? parseFloat(form.consultationFee) : null,
         isActive: form.isActive, googleCalendarEnabled: form.googleCalendarEnabled,
         achievements: achievements.filter(a => a.title.trim()),
+        clinicId: form.clinicId || null,
       };
       if (isEdit) await doctorApi.update(existing.id, payload);
       else await doctorApi.create(payload);
@@ -92,8 +102,36 @@ export default function DoctorFormScreen({ route, navigation }) {
           <Field label="Phone" error={errors.phone}>
             <TextInput style={[styles.input, errors.phone && styles.inputError]} value={form.phone} onChangeText={(v) => updateField('phone', v)} placeholder="10-digit number" placeholderTextColor={colors.textMuted} keyboardType="phone-pad" />
           </Field>
+          <Field label="Clinic Address">
+            <TextInput style={[styles.input, styles.multiline]} value={form.address} onChangeText={(v) => updateField('address', v)} placeholder="Full clinic address for patients to visit" placeholderTextColor={colors.textMuted} multiline numberOfLines={3} />
+          </Field>
           <Field label="Specialization">
             <TextInput style={styles.input} value={form.specialization} onChangeText={(v) => updateField('specialization', v)} placeholder="e.g. Cardiologist" placeholderTextColor={colors.textMuted} />
+          </Field>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Clinic Assignment</Text>
+          <Field label="Clinic">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.clinicScroll}>
+              <TouchableOpacity
+                style={[styles.clinicChip, !form.clinicId && styles.clinicChipActive]}
+                onPress={() => updateField('clinicId', null)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.clinicChipText, !form.clinicId && styles.clinicChipTextActive]}>None</Text>
+              </TouchableOpacity>
+              {clinics.map((c) => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[styles.clinicChip, form.clinicId === c.id && styles.clinicChipActive]}
+                  onPress={() => updateField('clinicId', c.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.clinicChipText, form.clinicId === c.id && styles.clinicChipTextActive]}>{c.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </Field>
         </View>
 
@@ -206,4 +244,9 @@ const styles = StyleSheet.create({
   removeBtnText: { fontSize: 11, color: colors.error, fontWeight: '700' },
   addAchievementBtn: { borderWidth: 1, borderStyle: 'dashed', borderColor: colors.primary, borderRadius: borderRadius.sm, paddingVertical: 10, alignItems: 'center', marginTop: 4 },
   addAchievementText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  clinicScroll: { marginVertical: 4 },
+  clinicChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: borderRadius.md, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, marginRight: 8 },
+  clinicChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  clinicChipText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  clinicChipTextActive: { color: '#FFFFFF' },
 });

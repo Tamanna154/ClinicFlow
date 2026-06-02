@@ -35,6 +35,6 @@ export async function authFetch(url, options = {}) {
     if (err.name === 'AbortError') {
       throw new Error('Request timed out. Server may be offline.');
     }
-    throw new Error('Unable to connect to server. Check your network connection.');
+    throw new Error(`Unable to connect to server (${url}). Check your network connection.`);
   }
 }

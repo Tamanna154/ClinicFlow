@@ -88,21 +88,25 @@ public class AppointmentService {
             throw new IllegalArgumentException("Start time must be before end time");
         }
 
-        String dayOfWeek = request.getAppointmentDate().getDayOfWeek().name();
-        Optional<DoctorAvailability> avail = availabilityRepository
-                .findByDoctorIdAndDayOfWeek(request.getDoctorId(), dayOfWeek);
+        boolean isEmergency = "EMERGENCY".equalsIgnoreCase(request.getAppointmentType());
 
-        boolean inAvailability = avail
-                .filter(DoctorAvailability::getIsAvailable)
-                .filter(a -> !request.getStartTime().isBefore(a.getStartTime())
-                          && !request.getEndTime().isAfter(a.getEndTime()))
-                .isPresent();
+        if (!isEmergency) {
+            String dayOfWeek = request.getAppointmentDate().getDayOfWeek().name();
+            Optional<DoctorAvailability> avail = availabilityRepository
+                    .findByDoctorIdAndDayOfWeek(request.getDoctorId(), dayOfWeek);
 
-        if (!inAvailability) {
-            StringBuilder msg = new StringBuilder("Requested time is outside the doctor's availability");
-            avail.filter(DoctorAvailability::getIsAvailable).ifPresent(a ->
-                    msg.append(" (available: ").append(a.getStartTime()).append("-").append(a.getEndTime()).append(")"));
-            throw new IllegalArgumentException(msg.toString());
+            boolean inAvailability = avail
+                    .filter(DoctorAvailability::getIsAvailable)
+                    .filter(a -> !request.getStartTime().isBefore(a.getStartTime())
+                              && !request.getEndTime().isAfter(a.getEndTime()))
+                    .isPresent();
+
+            if (!inAvailability) {
+                StringBuilder msg = new StringBuilder("Requested time is outside the doctor's availability");
+                avail.filter(DoctorAvailability::getIsAvailable).ifPresent(a ->
+                        msg.append(" (available: ").append(a.getStartTime()).append("-").append(a.getEndTime()).append(")"));
+                throw new IllegalArgumentException(msg.toString());
+            }
         }
 
         List<Appointment> conflicts = appointmentRepository

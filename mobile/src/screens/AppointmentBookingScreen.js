@@ -30,6 +30,7 @@ export default function AppointmentBookingScreen({ route, navigation }) {
     appointmentDate: prefillDate || '', startTime: prefillStart || '',
     endTime: prefillEnd || '', reason: '', notes: '', status: 'SCHEDULED',
     isOnline: false, meetingLink: '', consultationNotes: '',
+    isEmergency: false,
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -92,6 +93,7 @@ export default function AppointmentBookingScreen({ route, navigation }) {
         notes: form.notes.trim()||null, status: form.status,
         isOnline: form.isOnline, meetingLink: form.meetingLink.trim()||null,
         consultationNotes: form.consultationNotes.trim()||null,
+        appointmentType: form.isEmergency ? 'EMERGENCY' : (form.isOnline ? 'ONLINE' : 'IN_PERSON'),
       });
       Alert.alert('Success', 'Appointment booked! It will reflect on the Calendar.', [
         { text: 'OK', onPress: () => navigation.goBack() },
@@ -228,6 +230,18 @@ export default function AppointmentBookingScreen({ route, navigation }) {
           )}
         </View>
 
+        <View style={[styles.card, form.isEmergency && { borderColor: colors.error, borderWidth: 2 }]}>
+          <TouchableOpacity style={styles.toggleRow} onPress={() => setForm({...form, isEmergency: !form.isEmergency, reason: form.isEmergency ? form.reason : 'EMERGENCY - ' + (form.reason || 'Urgent visit')})} activeOpacity={0.7}>
+            <View style={styles.toggleInfo}>
+              <Text style={[styles.toggleLabel, form.isEmergency && { color: colors.error }]}>🚨 Emergency Appointment</Text>
+              <Text style={styles.toggleDesc}>Bypass time restrictions for urgent cases</Text>
+            </View>
+            <View style={[styles.toggleTrack, form.isEmergency && { backgroundColor: colors.error }]}>
+              <View style={[styles.toggleKnob, form.isEmergency && { alignSelf: 'flex-end' }]} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {selectedDoc?.googleCalendarEnabled && (
           <View style={styles.calNote}><Text style={styles.calIcon}>▣</Text><Text style={styles.calText}>Google Calendar event will be created</Text></View>
         )}
@@ -247,10 +261,10 @@ function Field({ label, required, error, children, style }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg }, content: { padding: 16, paddingBottom: 40 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
-  card: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: 20, marginBottom: 14, borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm },
-  sectionTitle: { ...typography.label, color: colors.primary, marginBottom: 14, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  card: { backgroundColor: colors.surface, borderRadius: 20, padding: 20, marginBottom: 14, borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.primary, marginBottom: 14, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   fLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 },
-  input: { backgroundColor: colors.surface, borderRadius: borderRadius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.text, fontWeight: '500' },
+  input: { backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.text, fontWeight: '500' },
   multiline: { minHeight: 60, textAlignVertical: 'top', paddingVertical: 10 },
   inputError: { borderColor: colors.error, backgroundColor: colors.errorLight },
   eText: { color: colors.error, fontSize: 11, marginTop: 2, fontWeight: '600' },

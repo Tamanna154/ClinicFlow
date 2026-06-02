@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, FlatList, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, RefreshControl, TextInput,
+  ActivityIndicator, Alert, RefreshControl, TextInput, Platform, StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { patientApi } from '../api/patientApi';
@@ -120,6 +120,8 @@ export default function PatientListScreen({ navigation }) {
     </View>
   );
 }
+
+const STATUSBAR_H = Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 36);
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },

@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform, StatusBar } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -39,21 +39,32 @@ import CurrencySettingsScreen from './src/screens/CurrencySettingsScreen';
 import AddExpenseScreen from './src/screens/AddExpenseScreen';
 import ConsultationScreen from './src/screens/ConsultationScreen';
 import ConsultationBillingScreen from './src/screens/ConsultationBillingScreen';
+import PrescriptionScreen from './src/screens/PrescriptionScreen';
 import DoctorDashboardScreen from './src/screens/DoctorDashboardScreen';
+import LetterheadSetupScreen from './src/screens/LetterheadSetupScreen';
+import ServerSettingsScreen from './src/screens/ServerSettingsScreen';
 
 import ErrorBoundary from './src/components/ErrorBoundary';
+import { initializeApiBase } from './src/api/apiBase';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+
+const STATUSBAR_H = Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 36);
+
+function HeaderBackground() {
+  return <View style={{ flex: 1, backgroundColor: colors.primary, marginTop: -STATUSBAR_H, paddingTop: STATUSBAR_H }} />;
+}
 
 const headerOpts = {
   headerStyle: { backgroundColor: colors.primary, elevation: 0, shadowOpacity: 0 },
   headerTintColor: '#FFFFFF',
   headerTitleStyle: { fontWeight: '700', fontSize: 17, letterSpacing: -0.3 },
   headerShadowVisible: false,
+  headerBackground: () => <HeaderBackground />,
 };
 
-  const TAB_ICONS = {
+const TAB_ICONS = {
   Dashboard: 'D', Schedule: 'S', Appts: 'A', Patients: 'P',
   Doctors: 'Dr', Stock: 'St', Billing: 'B', Income: 'I', Staff: 'Stf',
   'Doctor Dashboard': 'D',
@@ -71,16 +82,11 @@ function TabIcon({ label, focused }) {
 function LogoutButton({ tintColor }) {
   const { logout } = useAuth();
   return (
-    <TouchableOpacity
-      onPress={() => Alert.alert('Logout', 'Are you sure you want to sign out?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: logout },
-      ])}
-      style={{ marginRight: 8, padding: 8 }}
-      activeOpacity={0.6}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-    >
-      <Text style={{ fontSize: 17, color: tintColor || '#FFFFFF', fontWeight: '700' }}>↩</Text>
+    <TouchableOpacity onPress={() => Alert.alert('Logout', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: logout },
+    ])} activeOpacity={0.7}>
+      <Text style={{ fontSize: 14, color: tintColor || '#FFFFFF', fontWeight: '600' }}>Sign Out</Text>
     </TouchableOpacity>
   );
 }
@@ -111,7 +117,9 @@ function DoctorStack() {
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} initialParams={{ isDoctor: true }} options={{ title: 'Appointment' }} />
       <Stack.Screen name="Consultation" component={ConsultationScreen} options={{ title: 'Consultation' }} />
       <Stack.Screen name="ConsultationBilling" component={ConsultationBillingScreen} options={{ title: 'Generate Bill' }} />
+      <Stack.Screen name="Prescription" component={PrescriptionScreen} options={{ title: 'Prescription' }} />
       <Stack.Screen name="Income" component={IncomeDashboardScreen} options={{ title: 'Financial Reports' }} />
+      <Stack.Screen name="LetterheadSetup" component={LetterheadSetupScreen} options={{ title: 'Letterhead' }} />
     </Stack.Navigator>
   );
 }
@@ -123,6 +131,7 @@ function DashboardStack() {
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} initialParams={{ isDoctor: true }} options={{ title: 'Appointment' }} />
       <Stack.Screen name="Consultation" component={ConsultationScreen} options={{ title: 'Consultation' }} />
       <Stack.Screen name="ConsultationBilling" component={ConsultationBillingScreen} options={{ title: 'Generate Bill' }} />
+      <Stack.Screen name="Prescription" component={PrescriptionScreen} options={{ title: 'Prescription' }} />
     </Stack.Navigator>
   );
 }
@@ -135,6 +144,7 @@ function AppointmentStack() {
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} initialParams={{ isDoctor: true }} options={{ title: 'Appointment' }} />
       <Stack.Screen name="Consultation" component={ConsultationScreen} options={{ title: 'Consultation' }} />
       <Stack.Screen name="ConsultationBilling" component={ConsultationBillingScreen} options={{ title: 'Generate Bill' }} />
+      <Stack.Screen name="Prescription" component={PrescriptionScreen} options={{ title: 'Prescription' }} />
     </Stack.Navigator>
   );
 }
@@ -147,6 +157,7 @@ function CalendarStack() {
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} initialParams={{ isDoctor: true }} options={{ title: 'Appointment' }} />
       <Stack.Screen name="Consultation" component={ConsultationScreen} options={{ title: 'Consultation' }} />
       <Stack.Screen name="ConsultationBilling" component={ConsultationBillingScreen} options={{ title: 'Generate Bill' }} />
+      <Stack.Screen name="Prescription" component={PrescriptionScreen} options={{ title: 'Prescription' }} />
     </Stack.Navigator>
   );
 }
@@ -198,6 +209,7 @@ function IncomeStack() {
       <Stack.Screen name="IncomeDashboard" component={IncomeDashboardScreen} options={{ title: 'Finance' }} />
       <Stack.Screen name="CurrencySettings" component={CurrencySettingsScreen} options={{ title: 'Currency' }} />
       <Stack.Screen name="AddExpense" component={AddExpenseScreen} options={{ title: 'Add Expense' }} />
+      <Stack.Screen name="ServerSettings" component={ServerSettingsScreen} options={{ title: 'Server Settings' }} />
     </Stack.Navigator>
   );
 }
@@ -209,6 +221,7 @@ function PatientAppointmentStack() {
       <Stack.Screen name="PatientBooking" component={PatientBookingScreen} options={{ title: 'Book Appointment' }} />
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} options={{ title: 'Appointment' }} />
       <Stack.Screen name="PatientReports" component={PatientReportsScreen} options={{ title: 'My Reports' }} />
+      <Stack.Screen name="Prescription" component={PrescriptionScreen} options={{ title: 'Prescription' }} />
     </Stack.Navigator>
   );
 }
@@ -418,12 +431,19 @@ function AuthStack() {
         headerShadowVisible: false,
         headerTitleStyle: { fontWeight: '700', fontSize: 18, letterSpacing: -0.2 },
       }} />
+      <Stack.Screen name="ServerSettings" component={ServerSettingsScreen} options={{
+        headerStyle: { backgroundColor: colors.primary },
+        headerTintColor: '#FFFFFF',
+        headerTitle: 'Server Settings',
+        headerShadowVisible: false,
+      }} />
     </Stack.Navigator>
   );
 }
 
 function AppContent() {
   const { user } = useAuth();
+  React.useEffect(() => { initializeApiBase(); }, []);
   if (!user) {
     return (
       <NavigationContainer>
@@ -455,27 +475,16 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  tabOuter: {
-    backgroundColor: colors.bg,
-    paddingBottom: 0,
-    paddingTop: 0,
-  },
+  tabOuter: { backgroundColor: colors.bg },
   tabBar: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    paddingTop: 4,
-    paddingBottom: 4,
-    paddingHorizontal: 4,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+    flexDirection: 'row', backgroundColor: colors.surface,
+    paddingTop: 6, paddingBottom: 6, paddingHorizontal: 8,
+    borderTopWidth: 1, borderTopColor: colors.borderLight,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
   },
   tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 2,
-    borderRadius: 10,
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 4, paddingHorizontal: 2, borderRadius: 10,
   },
   tabItemActive: {
     backgroundColor: colors.primary + '0A',

@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
         body.put("status", 400);
         String name = ex.getName();
         Object value = ex.getValue();
-        body.put("error", "Invalid " + name + ": '" + value + "' is not a valid ID. Please select a valid appointment.");
+        body.put("error", "Invalid " + name + ": '" + value + "' is not a valid ID.");
         return ResponseEntity.badRequest().body(body);
     }
 

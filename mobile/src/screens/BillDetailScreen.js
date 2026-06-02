@@ -1,11 +1,12 @@
 import React, { useCallback, useState } from 'react';
 import {
-  View, Text, StyleSheet, ActivityIndicator, Alert, ScrollView, TouchableOpacity,
+  View, Text, StyleSheet, ActivityIndicator, Alert, ScrollView, TouchableOpacity, Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { billingApi } from '../api/billingApi';
 import { useSettings } from '../context/SettingsContext';
 import { colors, borderRadius, shadows } from '../theme';
+import { shareBill, downloadBill } from '../utils/pdfHelper';
 
 export default function BillDetailScreen({ route }) {
   const { billId } = route.params;
@@ -115,6 +116,33 @@ export default function BillDetailScreen({ route }) {
           <Text style={styles.grandValue}>{formatCurrency(bill.totalAmount)}</Text>
         </View>
       </View>
+
+      <View style={styles.actionBar}>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={async () => {
+            try { await shareBill(bill); }
+            catch (e) { Alert.alert('Error', e.message); }
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.actionIcon}>↗</Text>
+          <Text style={styles.actionLabel}>Share</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={async () => {
+            try {
+              const uri = await downloadBill(bill);
+              Alert.alert('Downloaded', `PDF saved to:\n${uri}`);
+            } catch (e) { Alert.alert('Error', e.message); }
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.actionIcon}>↓</Text>
+          <Text style={styles.actionLabel}>Download PDF</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -155,4 +183,12 @@ const styles = StyleSheet.create({
   grandTotal: { marginTop: 8, paddingTop: 10, borderTopWidth: 2, borderTopColor: colors.border },
   grandLabel: { fontSize: 16, fontWeight: '800', color: colors.text },
   grandValue: { fontSize: 20, fontWeight: '800', color: colors.primary, letterSpacing: -0.3 },
+  actionBar: { flexDirection: 'row', gap: 10, marginTop: 16, marginBottom: 8 },
+  actionBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surface, borderRadius: borderRadius.md, paddingVertical: 12,
+    borderWidth: 1, borderColor: colors.border, gap: 6, ...shadows.sm,
+  },
+  actionIcon: { fontSize: 18, fontWeight: '700', color: colors.primary },
+  actionLabel: { fontSize: 13, fontWeight: '700', color: colors.text },
 });

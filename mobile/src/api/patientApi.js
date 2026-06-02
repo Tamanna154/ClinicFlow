@@ -38,7 +38,7 @@ export const patientApi = {
       try {
         const text = await res.text();
         const err = JSON.parse(text);
-        errMsg = err.errors?.join(', ') || err.message || errMsg;
+        errMsg = err.errors?.join(', ') || err.error || err.message || errMsg;
       } catch (e) {
         // Fallback if response isn't JSON
       }
@@ -59,7 +59,7 @@ export const patientApi = {
       try {
         const text = await res.text();
         const err = JSON.parse(text);
-        errMsg = err.errors?.join(', ') || err.message || errMsg;
+        errMsg = err.errors?.join(', ') || err.error || err.message || errMsg;
       } catch (e) {
         // Fallback if response isn't JSON
       }
@@ -98,5 +98,5 @@ export const patientApi = {
   },
 };
 
-export const getActiveApiBase = () => activeApiBase;
+
 

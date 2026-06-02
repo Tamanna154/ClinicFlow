@@ -1,0 +1,10 @@
+CREATE TABLE clinics (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    address TEXT,
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    logo_path VARCHAR(500),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);

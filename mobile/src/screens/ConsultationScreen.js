@@ -1,16 +1,21 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator,
+  View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator,
+  Platform, StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { consultationApi } from '../api/consultationApi';
 import { appointmentApi } from '../api/appointmentApi';
 import { colors, borderRadius, shadows } from '../theme';
+import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
+import { sharePrescription, downloadPrescription } from '../utils/pdfHelper';
+import { letterheadApi } from '../api/letterheadApi';
+import { prescriptionApi } from '../api/prescriptionApi';
 
 export default function ConsultationScreen({ route, navigation }) {
   const { appointment } = route.params;
+  const { user } = useAuth();
   const [consultation, setConsultation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -26,6 +31,7 @@ export default function ConsultationScreen({ route, navigation }) {
   const [temperature, setTemperature] = useState('');
   const [oxygenLevel, setOxygenLevel] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
+  const [existingPrescription, setExistingPrescription] = useState(null);
   const { formatCurrency } = useSettings();
 
   useFocusEffect(useCallback(() => {
@@ -46,9 +52,14 @@ export default function ConsultationScreen({ route, navigation }) {
       setTemperature(existing.temperature != null ? String(existing.temperature) : '');
       setOxygenLevel(existing.oxygenLevel != null ? String(existing.oxygenLevel) : '');
       setFollowUpDate(existing.followUpDate || '');
-      setStarted(true);
+      setStarted(existing.status === 'IN_PROGRESS' || existing.status === 'COMPLETED');
+      try {
+        const rx = await prescriptionApi.getByConsultation(existing.id);
+        setExistingPrescription(rx);
+      } catch (e) {
+        setExistingPrescription(null);
+      }
     } catch (e) {
-      setConsultation(null);
       setStarted(false);
     } finally {
       setLoading(false);
@@ -228,11 +239,62 @@ export default function ConsultationScreen({ route, navigation }) {
               <Text style={styles.completeBtnText}>Complete Consultation</Text>
             </TouchableOpacity>
           </View>
+          {consultation?.id && (
+            <TouchableOpacity style={styles.rxPrescriptionBtn} onPress={() => navigation.navigate('Prescription', {
+              consultationId: consultation.id,
+              patientId: appointment.patientId || consultation.patientId,
+              existingData: existingPrescription || null,
+            })} activeOpacity={0.7}>
+              <Text style={styles.rxPrescriptionIcon}>💊</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rxPrescriptionLabel}>Structured Prescription</Text>
+                <Text style={styles.rxPrescriptionSub}>
+                  {existingPrescription ? `${existingPrescription.medicines?.length || 0} medicines • ${existingPrescription.prescriptionNumber}` : 'Search & add medicines from inventory'}
+                </Text>
+              </View>
+              <Text style={styles.rxPrescriptionArrow}>→</Text>
+            </TouchableOpacity>
+          )}
+          <View style={styles.rxActionRow}>
+            <TouchableOpacity
+              style={styles.rxActionBtn}
+              onPress={async () => {
+                try {
+                  const data = { doctorNotes, diagnosis, symptoms, bloodPressure, pulseRate: pulseRate ? parseInt(pulseRate) : null, weight: weight ? parseFloat(weight) : null, temperature: temperature ? parseFloat(temperature) : null, oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null, followUpDate, createdAt: consultation?.createdAt || new Date().toISOString(), medicines: existingPrescription?.medicines || [] };
+                  let lh = null;
+                  try { lh = await letterheadApi.get(user?.doctorId); } catch (ex) {}
+                  await sharePrescription(data, appointment.patientName, lh);
+                } catch (e) { Alert.alert('Error', e.message); }
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.rxActionIcon}>↗</Text>
+              <Text style={styles.rxActionLabel}>Share Rx</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.rxActionBtn}
+              onPress={async () => {
+                try {
+                  const data = { doctorNotes, diagnosis, symptoms, bloodPressure, pulseRate: pulseRate ? parseInt(pulseRate) : null, weight: weight ? parseFloat(weight) : null, temperature: temperature ? parseFloat(temperature) : null, oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null, followUpDate, createdAt: consultation?.createdAt || new Date().toISOString(), medicines: existingPrescription?.medicines || [] };
+                  let lh = null;
+                  try { lh = await letterheadApi.get(user?.doctorId); } catch (ex) {}
+                  await downloadPrescription(data, appointment.patientName, lh);
+                  Alert.alert('Downloaded', 'Prescription PDF saved.');
+                } catch (e) { Alert.alert('Error', e.message); }
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.rxActionIcon}>↓</Text>
+              <Text style={styles.rxActionLabel}>Download Rx</Text>
+            </TouchableOpacity>
+          </View>
         </>
       )}
     </ScrollView>
   );
 }
+
+const STATUSBAR_H = Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 36);
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
@@ -260,4 +322,21 @@ const styles = StyleSheet.create({
   saveBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
   completeBtn: { flex: 1, backgroundColor: colors.success, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center', ...shadows.sm },
   completeBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  rxActionRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  rxActionBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surface, borderRadius: borderRadius.md, paddingVertical: 10,
+    borderWidth: 1, borderColor: colors.border, gap: 6, ...shadows.sm,
+  },
+  rxActionIcon: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  rxActionLabel: { fontSize: 13, fontWeight: '700', color: colors.text },
+  rxPrescriptionBtn: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '08',
+    borderRadius: borderRadius.md, padding: 14, marginTop: 10,
+    borderWidth: 1.5, borderColor: colors.primary + '25', gap: 10,
+  },
+  rxPrescriptionIcon: { fontSize: 22 },
+  rxPrescriptionLabel: { fontSize: 14, fontWeight: '700', color: colors.primary },
+  rxPrescriptionSub: { fontSize: 11, fontWeight: '500', color: colors.textSecondary, marginTop: 1 },
+  rxPrescriptionArrow: { fontSize: 18, color: colors.primary, fontWeight: '700' },
 });

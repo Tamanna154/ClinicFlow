@@ -95,8 +95,12 @@ export default function DoctorDetailScreen({ route, navigation }) {
         </View>
 
         <Section title="Contact & Practice">
+          {doctor.clinicName && <Row icon="🏥" label="Clinic" value={doctor.clinicName} />}
           <Row icon="✉️" label="Email" value={doctor.email} isLink onPress={() => Linking.openURL(`mailto:${doctor.email}`)} />
           <Row icon="📞" label="Phone" value={doctor.phone} isLink onPress={() => { const url = `${Platform.OS === 'ios' ? 'telprompt' : 'tel'}:${doctor.phone?.replace(/[^\d+]/g, '')}`; Linking.canOpenURL(url).then(s => s && Linking.openURL(url)); }} />
+          {doctor.address ? (
+            <Row icon="📍" label="Address" value={doctor.address} isLink onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(doctor.address)}`)} />
+          ) : null}
           <Row icon="🎓" label="Qualifications" value={doctor.qualifications} />
         </Section>
 
@@ -130,14 +134,24 @@ export default function DoctorDetailScreen({ route, navigation }) {
         )}
 
         {canManage && (
-          <TouchableOpacity style={styles.incomeBtn} onPress={() => navigation.navigate('Income')} activeOpacity={0.8}>
-            <Text style={styles.incomeIcon}>📊</Text>
-            <View style={styles.incomeContent}>
-              <Text style={styles.incomeTitle}>Financial Reports</Text>
-              <Text style={styles.incomeSub}>Income, expenses & profit summary</Text>
-            </View>
-            <Text style={styles.incomeArrow}>›</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.incomeBtn} onPress={() => navigation.navigate('Income')} activeOpacity={0.8}>
+              <Text style={styles.incomeIcon}>📊</Text>
+              <View style={styles.incomeContent}>
+                <Text style={styles.incomeTitle}>Financial Reports</Text>
+                <Text style={styles.incomeSub}>Income, expenses & profit summary</Text>
+              </View>
+              <Text style={styles.incomeArrow}>›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.incomeBtn} onPress={() => navigation.navigate('LetterheadSetup')} activeOpacity={0.8}>
+              <Text style={styles.incomeIcon}>📄</Text>
+              <View style={styles.incomeContent}>
+                <Text style={styles.incomeTitle}>Letterhead</Text>
+                <Text style={styles.incomeSub}>Clinic letterhead & prescription template</Text>
+              </View>
+              <Text style={styles.incomeArrow}>›</Text>
+            </TouchableOpacity>
+          </>
         )}
 
         {doctor.consultationFee != null && (

@@ -12,6 +12,8 @@ import { usePermission } from '../hooks/usePermission';
 import { useSettings } from '../context/SettingsContext';
 import Avatar from '../components/Avatar';
 import { colors, shadows, borderRadius, getGenderStyle } from '../theme';
+import { sharePrescription, downloadPrescription } from '../utils/pdfHelper';
+import { letterheadApi } from '../api/letterheadApi';
 
 function Section({ title, children }) {
   return (
@@ -148,6 +150,38 @@ export default function PatientDetailScreen({ route, navigation }) {
                 {c.weight && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>Weight: </Text>{c.weight} kg</Text>}
                 {c.followUpDate && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>Follow-Up: </Text>{c.followUpDate}</Text>}
                 {c.bill && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>Bill: </Text>{formatCurrency(c.bill.totalAmount)} - {c.bill.paymentStatus}</Text>}
+                {c.doctorNotes && (
+                  <View style={styles.prescriptionActions}>
+                    <TouchableOpacity
+                      style={styles.rxBtn}
+                      onPress={async () => {
+                        try {
+                          let lh = null;
+                          try { lh = await letterheadApi.get(c.doctorId); } catch (ex) {}
+                          await sharePrescription(c, patient.name, lh);
+                        }
+                        catch (e) { Alert.alert('Error', e.message); }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.rxBtnText}>↗ Share Rx</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.rxBtn}
+                      onPress={async () => {
+                        try {
+                          let lh = null;
+                          try { lh = await letterheadApi.get(c.doctorId); } catch (ex) {}
+                          await downloadPrescription(c, patient.name, lh);
+                          Alert.alert('Downloaded', 'Prescription PDF saved.');
+                        } catch (e) { Alert.alert('Error', e.message); }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.rxBtnText}>↓ Download Rx</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             ))}
           </Section>
@@ -271,4 +305,11 @@ const styles = StyleSheet.create({
   restoreBtn: { flex: 1, backgroundColor: colors.successLight, borderRadius: borderRadius.md, paddingVertical: 13, alignItems: 'center', borderWidth: 1, borderColor: '#BBF7D0' },
   deleteBtn: { width: 56, backgroundColor: colors.error, borderRadius: borderRadius.md, paddingVertical: 13, alignItems: 'center', ...shadows.sm },
   btnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  prescriptionActions: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  rxBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.primary + '08', borderRadius: borderRadius.sm, paddingVertical: 6,
+    borderWidth: 1, borderColor: colors.primary + '20', gap: 4,
+  },
+  rxBtnText: { fontSize: 11, fontWeight: '700', color: colors.primary },
 });
