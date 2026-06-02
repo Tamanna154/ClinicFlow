@@ -28,6 +28,7 @@ public class AppointmentResponse {
     private String reason;
     private String notes;
     private String googleEventId;
+    private String appointmentType;
     private Boolean isOnline;
     private String meetingLink;
     private String consultationNotes;
@@ -54,6 +55,7 @@ public class AppointmentResponse {
                 .reason(appointment.getReason())
                 .notes(appointment.getNotes())
                 .googleEventId(appointment.getGoogleEventId())
+                .appointmentType(appointment.getAppointmentType())
                 .isOnline(appointment.getIsOnline())
                 .meetingLink(appointment.getMeetingLink())
                 .consultationNotes(appointment.getConsultationNotes())

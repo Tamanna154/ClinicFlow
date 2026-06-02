@@ -88,21 +88,25 @@ public class AppointmentService {
             throw new IllegalArgumentException("Start time must be before end time");
         }
 
-        String dayOfWeek = request.getAppointmentDate().getDayOfWeek().name();
-        Optional<DoctorAvailability> avail = availabilityRepository
-                .findByDoctorIdAndDayOfWeek(request.getDoctorId(), dayOfWeek);
+        boolean isEmergency = "EMERGENCY".equalsIgnoreCase(request.getAppointmentType());
 
-        boolean inAvailability = avail
-                .filter(DoctorAvailability::getIsAvailable)
-                .filter(a -> !request.getStartTime().isBefore(a.getStartTime())
-                          && !request.getEndTime().isAfter(a.getEndTime()))
-                .isPresent();
+        if (!isEmergency) {
+            String dayOfWeek = request.getAppointmentDate().getDayOfWeek().name();
+            Optional<DoctorAvailability> avail = availabilityRepository
+                    .findByDoctorIdAndDayOfWeek(request.getDoctorId(), dayOfWeek);
 
-        if (!inAvailability) {
-            StringBuilder msg = new StringBuilder("Requested time is outside the doctor's availability");
-            avail.filter(DoctorAvailability::getIsAvailable).ifPresent(a ->
-                    msg.append(" (available: ").append(a.getStartTime()).append("-").append(a.getEndTime()).append(")"));
-            throw new IllegalArgumentException(msg.toString());
+            boolean inAvailability = avail
+                    .filter(DoctorAvailability::getIsAvailable)
+                    .filter(a -> !request.getStartTime().isBefore(a.getStartTime())
+                              && !request.getEndTime().isAfter(a.getEndTime()))
+                    .isPresent();
+
+            if (!inAvailability) {
+                StringBuilder msg = new StringBuilder("Requested time is outside the doctor's availability");
+                avail.filter(DoctorAvailability::getIsAvailable).ifPresent(a ->
+                        msg.append(" (available: ").append(a.getStartTime()).append("-").append(a.getEndTime()).append(")"));
+                throw new IllegalArgumentException(msg.toString());
+            }
         }
 
         List<Appointment> conflicts = appointmentRepository
@@ -121,6 +125,10 @@ public class AppointmentService {
         }
 
         Boolean isOnline = request.getIsOnline() != null && request.getIsOnline();
+        String apptType = request.getAppointmentType();
+        if (apptType == null) {
+            apptType = isOnline ? "ONLINE" : "IN_PERSON";
+        }
         Appointment appointment = Appointment.builder()
                 .doctor(doctor)
                 .patient(patient)
@@ -130,6 +138,7 @@ public class AppointmentService {
                 .status(request.getStatus() != null ? request.getStatus() : "SCHEDULED")
                 .reason(request.getReason())
                 .notes(request.getNotes())
+                .appointmentType(apptType)
                 .isOnline(isOnline)
                 .meetingLink(isOnline ? request.getMeetingLink() : null)
                 .consultationNotes(request.getConsultationNotes())
@@ -155,7 +164,7 @@ public class AppointmentService {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment", id));
 
-        String validStatuses = "SCHEDULED,CONFIRMED,IN_PROGRESS,COMPLETED,CANCELLED,NO_SHOW";
+        String validStatuses = "SCHEDULED,CONFIRMED,PATIENT_ARRIVED,IN_PROGRESS,CONSULTATION_COMPLETED,COMPLETED,CANCELLED,NO_SHOW";
         if (!validStatuses.contains(status.toUpperCase())) {
             throw new IllegalArgumentException("Invalid status. Must be one of: " + validStatuses);
         }
@@ -222,6 +231,7 @@ public class AppointmentService {
         Boolean isOnline = request.getIsOnline() != null && request.getIsOnline();
         appointment.setIsOnline(isOnline);
         appointment.setMeetingLink(isOnline ? request.getMeetingLink() : null);
+        if (request.getAppointmentType() != null) appointment.setAppointmentType(request.getAppointmentType());
         appointment.setConsultationNotes(request.getConsultationNotes());
 
         return AppointmentResponse.fromEntity(appointmentRepository.save(appointment));

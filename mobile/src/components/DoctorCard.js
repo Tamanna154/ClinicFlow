@@ -26,6 +26,12 @@ export default function DoctorCard({ doctor, onPress }) {
       </View>
 
       <View style={styles.body}>
+        {doctor.clinicName && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoIcon}>🏥</Text>
+            <Text style={styles.infoText} numberOfLines={1}>{doctor.clinicName}</Text>
+          </View>
+        )}
         {doctor.email && (
           <View style={styles.infoRow}>
             <Text style={styles.infoIcon}>✉</Text>

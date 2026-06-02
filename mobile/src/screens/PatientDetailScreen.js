@@ -6,11 +6,14 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { patientApi } from '../api/patientApi';
 import { billingApi } from '../api/billingApi';
+import { consultationApi } from '../api/consultationApi';
 import { useAuth } from '../context/AuthContext';
 import { usePermission } from '../hooks/usePermission';
 import { useSettings } from '../context/SettingsContext';
 import Avatar from '../components/Avatar';
 import { colors, shadows, borderRadius, getGenderStyle } from '../theme';
+import { sharePrescription, downloadPrescription } from '../utils/pdfHelper';
+import { letterheadApi } from '../api/letterheadApi';
 
 function Section({ title, children }) {
   return (
@@ -47,6 +50,7 @@ export default function PatientDetailScreen({ route, navigation }) {
   const [patient, setPatient] = useState(initial);
   const [visits, setVisits] = useState([]);
   const [bills, setBills] = useState([]);
+  const [consultations, setConsultations] = useState([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { hasPermission } = usePermission();
@@ -62,6 +66,8 @@ export default function PatientDetailScreen({ route, navigation }) {
       try { const v = await patientApi.getVisits(initial.id); if (mounted) setVisits(v); }
       catch (e) { console.log(e.message); }
       try { const b = await billingApi.getAll(); if (mounted) setBills(b.filter(bill => bill.patientId === initial.id)); }
+      catch (e) { console.log(e.message); }
+      try { const c = await consultationApi.getPatientHistory(initial.id); if (mounted) setConsultations(c); }
       catch (e) { console.log(e.message); }
     })();
     return () => { mounted = false; };
@@ -129,6 +135,57 @@ export default function PatientDetailScreen({ route, navigation }) {
           <Row icon="👤" label="Name" value={patient.emergencyContactName} />
           <Row icon="📞" label="Phone" value={patient.emergencyContactPhone} isLink />
         </Section>
+
+        {consultations.length > 0 && (
+          <Section title={`Consultation History (${consultations.length})`}>
+            {consultations.map((c) => (
+              <View key={c.id} style={styles.visitCard}>
+                <View style={styles.visitHeader}>
+                  <Text style={styles.visitDate}>{formatDate(c.createdAt)}</Text>
+                  {c.diagnosis && <Text style={styles.visitDoctor}>{c.diagnosis}</Text>}
+                </View>
+                {c.symptoms && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>Symptoms: </Text>{c.symptoms}</Text>}
+                {c.doctorNotes && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>Notes: </Text>{c.doctorNotes}</Text>}
+                {c.bloodPressure && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>BP: </Text>{c.bloodPressure}</Text>}
+                {c.weight && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>Weight: </Text>{c.weight} kg</Text>}
+                {c.followUpDate && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>Follow-Up: </Text>{c.followUpDate}</Text>}
+                {c.bill && <Text style={styles.visitDetail}><Text style={styles.visitLabel}>Bill: </Text>{formatCurrency(c.bill.totalAmount)} - {c.bill.paymentStatus}</Text>}
+                {c.doctorNotes && (
+                  <View style={styles.prescriptionActions}>
+                    <TouchableOpacity
+                      style={styles.rxBtn}
+                      onPress={async () => {
+                        try {
+                          let lh = null;
+                          try { lh = await letterheadApi.get(c.doctorId); } catch (ex) {}
+                          await sharePrescription(c, patient.name, lh);
+                        }
+                        catch (e) { Alert.alert('Error', e.message); }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.rxBtnText}>↗ Share Rx</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.rxBtn}
+                      onPress={async () => {
+                        try {
+                          let lh = null;
+                          try { lh = await letterheadApi.get(c.doctorId); } catch (ex) {}
+                          await downloadPrescription(c, patient.name, lh);
+                          Alert.alert('Downloaded', 'Prescription PDF saved.');
+                        } catch (e) { Alert.alert('Error', e.message); }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.rxBtnText}>↓ Download Rx</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ))}
+          </Section>
+        )}
 
         {visits.length > 0 && (
           <Section title={`Visit History (${visits.length})`}>
@@ -248,4 +305,11 @@ const styles = StyleSheet.create({
   restoreBtn: { flex: 1, backgroundColor: colors.successLight, borderRadius: borderRadius.md, paddingVertical: 13, alignItems: 'center', borderWidth: 1, borderColor: '#BBF7D0' },
   deleteBtn: { width: 56, backgroundColor: colors.error, borderRadius: borderRadius.md, paddingVertical: 13, alignItems: 'center', ...shadows.sm },
   btnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  prescriptionActions: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  rxBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.primary + '08', borderRadius: borderRadius.sm, paddingVertical: 6,
+    borderWidth: 1, borderColor: colors.primary + '20', gap: 4,
+  },
+  rxBtnText: { fontSize: 11, fontWeight: '700', color: colors.primary },
 });

@@ -61,7 +61,7 @@ export const appointmentApi = {
       try {
         const text = await res.text();
         const err = JSON.parse(text);
-        errMsg = err.errors?.join(', ') || err.message || errMsg;
+        errMsg = err.errors?.join(', ') || err.error || err.message || errMsg;
       } catch (e) {}
       throw new Error(errMsg);
     }
@@ -80,7 +80,7 @@ export const appointmentApi = {
       try {
         const text = await res.text();
         const err = JSON.parse(text);
-        errMsg = err.errors?.join(', ') || err.message || errMsg;
+        errMsg = err.errors?.join(', ') || err.error || err.message || errMsg;
       } catch (e) {}
       throw new Error(errMsg);
     }
@@ -99,7 +99,7 @@ export const appointmentApi = {
       try {
         const text = await res.text();
         const err = JSON.parse(text);
-        errMsg = err.message || errMsg;
+        errMsg = err.errors?.join(', ') || err.error || err.message || errMsg;
       } catch (e) {}
       throw new Error(errMsg);
     }
@@ -143,7 +143,7 @@ export const appointmentApi = {
       try {
         const text = await res.text();
         const err = JSON.parse(text);
-        errMsg = err.errors?.join(', ') || err.message || errMsg;
+        errMsg = err.errors?.join(', ') || err.error || err.message || errMsg;
       } catch (e) {}
       throw new Error(errMsg);
     }

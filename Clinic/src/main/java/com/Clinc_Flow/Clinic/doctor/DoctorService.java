@@ -1,5 +1,7 @@
 package com.Clinc_Flow.Clinic.doctor;
 
+import com.Clinc_Flow.Clinic.clinic.Clinic;
+import com.Clinc_Flow.Clinic.clinic.ClinicRepository;
 import com.Clinc_Flow.Clinic.doctor.dto.*;
 import com.Clinc_Flow.Clinic.exception.ResourceNotFoundException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -8,32 +10,38 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class DoctorService {
 
     private final DoctorRepository doctorRepository;
+    private final ClinicRepository clinicRepository;
 
     @Transactional(readOnly = true)
     public List<DoctorResponse> findAll() {
-        return doctorRepository.findAll().stream()
-                .map(DoctorResponse::fromEntity)
-                .toList();
+        List<Doctor> doctors = doctorRepository.findAll();
+        return enrichWithClinicNames(doctors);
     }
 
     @Transactional(readOnly = true)
     public List<DoctorResponse> findAllActive() {
-        return doctorRepository.findByIsActiveTrue().stream()
-                .map(DoctorResponse::fromEntity)
-                .toList();
+        List<Doctor> doctors = doctorRepository.findByIsActiveTrue();
+        return enrichWithClinicNames(doctors);
     }
 
     @Transactional(readOnly = true)
     public DoctorResponse findById(Long id) {
         Doctor doctor = doctorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Doctor", id));
-        return DoctorResponse.fromEntity(doctor);
+        DoctorResponse response = DoctorResponse.fromEntity(doctor);
+        if (doctor.getClinicId() != null) {
+            clinicRepository.findById(doctor.getClinicId())
+                    .ifPresent(clinic -> response.setClinicName(clinic.getName()));
+        }
+        return response;
     }
 
     @Transactional
@@ -45,6 +53,7 @@ public class DoctorService {
                 .name(request.getName())
                 .email(request.getEmail())
                 .phone(request.getPhone())
+                .address(request.getAddress())
                 .specialization(request.getSpecialization())
                 .qualifications(request.getQualifications())
                 .bio(request.getBio())
@@ -52,6 +61,7 @@ public class DoctorService {
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .googleCalendarEnabled(request.getGoogleCalendarEnabled() != null ? request.getGoogleCalendarEnabled() : false)
                 .achievements(toAchievementsJson(request.getAchievements()))
+                .clinicId(request.getClinicId())
                 .build();
         return DoctorResponse.fromEntity(doctorRepository.save(doctor));
     }
@@ -66,6 +76,7 @@ public class DoctorService {
         doctor.setName(request.getName());
         doctor.setEmail(request.getEmail());
         doctor.setPhone(request.getPhone());
+        doctor.setAddress(request.getAddress());
         doctor.setSpecialization(request.getSpecialization());
         doctor.setQualifications(request.getQualifications());
         doctor.setBio(request.getBio());
@@ -73,6 +84,7 @@ public class DoctorService {
         doctor.setIsActive(request.getIsActive() != null ? request.getIsActive() : doctor.getIsActive());
         doctor.setGoogleCalendarEnabled(request.getGoogleCalendarEnabled() != null ? request.getGoogleCalendarEnabled() : doctor.getGoogleCalendarEnabled());
         doctor.setAchievements(toAchievementsJson(request.getAchievements()));
+        doctor.setClinicId(request.getClinicId());
         return DoctorResponse.fromEntity(doctorRepository.save(doctor));
     }
 
@@ -94,9 +106,25 @@ public class DoctorService {
         if (doctors.isEmpty()) {
             doctors = doctorRepository.findBySpecializationContainingIgnoreCase(trimmed);
         }
-        return doctors.stream()
-                .map(DoctorResponse::fromEntity)
+        return enrichWithClinicNames(doctors);
+    }
+
+    private List<DoctorResponse> enrichWithClinicNames(List<Doctor> doctors) {
+        if (doctors.isEmpty()) return List.of();
+        List<Long> clinicIds = doctors.stream()
+                .map(Doctor::getClinicId)
+                .filter(id -> id != null)
+                .distinct()
                 .toList();
+        Map<Long, String> clinicNames = clinicRepository.findAllById(clinicIds).stream()
+                .collect(Collectors.toMap(Clinic::getId, Clinic::getName));
+        return doctors.stream().map(d -> {
+            DoctorResponse resp = DoctorResponse.fromEntity(d);
+            if (d.getClinicId() != null) {
+                resp.setClinicName(clinicNames.get(d.getClinicId()));
+            }
+            return resp;
+        }).toList();
     }
 
     private String toAchievementsJson(List<AchievementDto> achievements) {

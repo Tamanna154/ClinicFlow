@@ -2,6 +2,8 @@ package com.Clinc_Flow.Clinic.doctor;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
@@ -27,6 +29,9 @@ public class Doctor {
     @Column(length = 20)
     private String phone;
 
+    @Column(columnDefinition = "TEXT")
+    private String address;
+
     @Column(length = 100)
     private String specialization;
 
@@ -48,8 +53,12 @@ public class Doctor {
     @Column(name = "google_refresh_token", columnDefinition = "TEXT")
     private String googleRefreshToken;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String achievements;
+
+    @Column(name = "clinic_id")
+    private Long clinicId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

@@ -17,6 +17,7 @@ public class DoctorResponse {
     private String name;
     private String email;
     private String phone;
+    private String address;
     private String specialization;
     private String qualifications;
     private String bio;
@@ -24,6 +25,8 @@ public class DoctorResponse {
     private Boolean isActive;
     private Boolean googleCalendarEnabled;
     private List<AchievementDto> achievements;
+    private Long clinicId;
+    private String clinicName;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
@@ -43,6 +46,7 @@ public class DoctorResponse {
                 .name(doctor.getName())
                 .email(doctor.getEmail())
                 .phone(doctor.getPhone())
+                .address(doctor.getAddress())
                 .specialization(doctor.getSpecialization())
                 .qualifications(doctor.getQualifications())
                 .bio(doctor.getBio())
@@ -50,6 +54,7 @@ public class DoctorResponse {
                 .isActive(doctor.getIsActive())
                 .googleCalendarEnabled(doctor.getGoogleCalendarEnabled())
                 .achievements(mapAchievements(doctor.getAchievements()))
+                .clinicId(doctor.getClinicId())
                 .createdAt(doctor.getCreatedAt())
                 .updatedAt(doctor.getUpdatedAt())
                 .build();
