@@ -107,17 +107,55 @@ export function getPrescriptionHtml(consultation, patientName, letterhead) {
   const contactLine = contactParts.length ? contactParts.join(' | ') : '';
   const regInfo = [lh.gstNumber ? `GST: ${lh.gstNumber}` : '', lh.registrationNumber ? `Reg: ${lh.registrationNumber}` : ''].filter(Boolean).join(' | ');
 
+  const clinicInitials = clinicName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 3);
   const logoHtml = lh.clinicLogoUrl
     ? `<img src="${lh.clinicLogoUrl}" style="max-height:50px; max-width:200px; margin-bottom:6px;" />`
-    : '';
+    : `<div style="display: inline-block; width: 44px; height: 44px; line-height: 44px; border-radius: 22px; background: #1e3a8a; color: #ffffff; font-weight: 800; font-size: 16px; margin-bottom: 6px; text-align: center; letter-spacing: 0.5px;">${clinicInitials}</div>`;
 
+  const doctorName = consultation.doctorName || 'Authorized Signatory';
   const signatureHtml = lh.signatureUrl
     ? `<img src="${lh.signatureUrl}" style="max-height:40px; max-width:160px; margin-bottom:2px;" />`
-    : '';
+    : `<div style="font-family: 'Brush Script MT', 'Reenie Beanie', 'Caveat', cursive, serif; font-style: italic; font-size: 20px; color: #1e3a8a; font-weight: 500; margin-bottom: 2px;">Dr. ${doctorName.replace(/^Dr\.\s+/i, '')}</div>`;
 
-  const bgStyle = lh.letterheadDesignUrl
-    ? `body { font-family: 'Georgia', serif; font-size: 13px; color: #1e293b; margin: 0; padding: 0; background-image: url('${lh.letterheadDesignUrl}'); background-repeat: no-repeat; background-position: center; background-size: cover; }`
-    : '';
+  // Determine modes
+  const isSystemGenerated = lh.useSystemGenerated;
+  const isPlainNotepad = !isSystemGenerated && lh.templateStyle === 'PLAIN';
+  const isUploadedBackground = !isSystemGenerated && (lh.templateStyle === 'BACKGROUND' || lh.letterheadDesignUrl);
+
+  let headerHtml = '';
+  let containerPadding = '0px';
+  let bodyBackground = '';
+
+  if (isSystemGenerated) {
+    // Template specific styling
+    let headerStyle = 'text-align: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 12px; margin-bottom: 16px;';
+    let nameStyle = 'font-size: 22px; margin: 0; letter-spacing: 1px; color: #1e3a8a; font-weight: bold;';
+    
+    if (lh.templateStyle === 'TEMPLATE_B') {
+      headerStyle = 'text-align: center; border-bottom: 2px dashed #0f766e; padding-bottom: 12px; margin-bottom: 16px; border-top: 4px solid #0f766e; padding-top: 8px;';
+      nameStyle = 'font-size: 22px; margin: 0; letter-spacing: 1px; color: #0f766e; font-family: "Georgia", serif; font-weight: bold;';
+    } else if (lh.templateStyle === 'TEMPLATE_C') {
+      headerStyle = 'text-align: left; padding: 12px 16px; margin-bottom: 16px; background-color: #1f2937; border-left: 6px solid #eab308; border-radius: 4px;';
+      nameStyle = 'font-size: 22px; margin: 0; letter-spacing: 1px; color: #eab308; font-weight: bold;';
+    }
+
+    headerHtml = `
+      <div class="header" style="${headerStyle}">
+        ${logoHtml}
+        <h1 style="${nameStyle}">${clinicName}</h1>
+        ${clinicAddress ? `<p>${clinicAddress}</p>` : ''}
+        ${contactLine ? `<p>${contactLine}</p>` : ''}
+        ${regInfo ? `<p style="font-size:10px;color:#94a3b8;margin-top:4px;">${regInfo}</p>` : ''}
+      </div>
+    `;
+  } else if (isUploadedBackground) {
+    containerPadding = '45mm 0px 0px 0px';
+    if (lh.letterheadDesignUrl) {
+      bodyBackground = `background-image: url('${lh.letterheadDesignUrl}'); background-repeat: no-repeat; background-position: center; background-size: cover;`;
+    }
+  } else if (isPlainNotepad) {
+    containerPadding = '35mm 0px 0px 0px';
+  }
 
   return `<!DOCTYPE html>
 <html>
@@ -126,9 +164,14 @@ export function getPrescriptionHtml(consultation, patientName, letterhead) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   @page { margin: 15mm 12mm; }
-  ${bgStyle || `body { font-family: 'Georgia', serif; font-size: 13px; color: #1e293b; margin: 0; padding: 0; }`}
-  .header { text-align: center; border-bottom: 2px solid #1e293b; padding-bottom: 12px; margin-bottom: 16px; }
-  .header h1 { font-size: 22px; margin: 0; letter-spacing: 1px; }
+  body { 
+    font-family: 'Georgia', serif; 
+    font-size: 13px; 
+    color: #1e293b; 
+    margin: 0; 
+    padding: ${containerPadding}; 
+    ${bodyBackground}
+  }
   .header p { font-size: 11px; color: #64748b; margin: 2px 0; }
   .title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 4px; }
   .info-table { width: 100%; margin-bottom: 16px; }
@@ -155,13 +198,7 @@ export function getPrescriptionHtml(consultation, patientName, letterhead) {
 </style>
 </head>
 <body>
-  <div class="header">
-    ${logoHtml}
-    <h1>${clinicName}</h1>
-    ${clinicAddress ? `<p>${clinicAddress}</p>` : ''}
-    ${contactLine ? `<p>${contactLine}</p>` : ''}
-    ${regInfo ? `<p style="font-size:10px;color:#94a3b8;">${regInfo}</p>` : ''}
-  </div>
+  ${headerHtml}
   <div class="title">Medical Prescription</div>
   <table class="info-table">
     <tr><td class="label">Patient Name:</td><td class="value">${patientName || '-'}</td></tr>

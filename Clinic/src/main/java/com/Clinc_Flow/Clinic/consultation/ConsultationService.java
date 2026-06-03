@@ -36,6 +36,7 @@ public class ConsultationService {
     private final PatientRepository patientRepository;
     private final PatientVisitRepository patientVisitRepository;
     private final IncomeRecordRepository incomeRecordRepository;
+    private final com.Clinc_Flow.Clinic.user.UserRepository userRepository;
 
     @Transactional
     public ConsultationResponse startConsultation(Long appointmentId) {
@@ -294,7 +295,24 @@ public class ConsultationService {
     }
 
     @Transactional(readOnly = true)
-    public DoctorDashboardResponse getDoctorDashboard(Long doctorId) {
+    public DoctorDashboardResponse getDoctorDashboard(Long userId) {
+        com.Clinc_Flow.Clinic.user.User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        Long doctorId = user.getDoctorId();
+        if (doctorId == null) {
+            return DoctorDashboardResponse.builder()
+                    .totalAppointmentsToday(0)
+                    .completedConsultations(0L)
+                    .pendingConsultations(0L)
+                    .upcomingAppointments(0L)
+                    .todayConsultationRevenue(BigDecimal.ZERO)
+                    .todayMedicineRevenue(BigDecimal.ZERO)
+                    .todayTotalRevenue(BigDecimal.ZERO)
+                    .followUps(List.of())
+                    .pendingPayments(List.of())
+                    .todayAppointments(List.of())
+                    .build();
+        }
         LocalDate today = LocalDate.now();
 
         List<Appointment> todayAppts = appointmentRepository

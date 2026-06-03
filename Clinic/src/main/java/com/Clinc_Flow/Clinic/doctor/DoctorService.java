@@ -13,12 +13,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.Clinc_Flow.Clinic.doctor.availability.DoctorAvailability;
+import com.Clinc_Flow.Clinic.doctor.availability.DoctorAvailabilityRepository;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 @Service
 @RequiredArgsConstructor
 public class DoctorService {
 
     private final DoctorRepository doctorRepository;
     private final ClinicRepository clinicRepository;
+    private final com.Clinc_Flow.Clinic.user.UserRepository userRepository;
+    private final DoctorAvailabilityRepository availabilityRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public List<DoctorResponse> findAll() {
@@ -63,7 +71,55 @@ public class DoctorService {
                 .achievements(toAchievementsJson(request.getAchievements()))
                 .clinicId(request.getClinicId())
                 .build();
-        return DoctorResponse.fromEntity(doctorRepository.save(doctor));
+        Doctor savedDoctor = doctorRepository.save(doctor);
+
+        // Seed default or customized availability
+        List<String> days = request.getAvailabilityDays();
+        if (days == null || days.isEmpty()) {
+            days = List.of("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY");
+        }
+        java.time.LocalTime start = request.getAvailabilityStartTime() != null 
+                ? java.time.LocalTime.parse(request.getAvailabilityStartTime()) 
+                : java.time.LocalTime.of(9, 0);
+        java.time.LocalTime end = request.getAvailabilityEndTime() != null 
+                ? java.time.LocalTime.parse(request.getAvailabilityEndTime()) 
+                : java.time.LocalTime.of(17, 0);
+        int duration = request.getSlotDuration() != null ? request.getSlotDuration() : 30;
+
+        for (String day : days) {
+            DoctorAvailability availability = DoctorAvailability.builder()
+                    .doctor(savedDoctor)
+                    .dayOfWeek(day.toUpperCase())
+                    .startTime(start)
+                    .endTime(end)
+                    .slotDuration(duration)
+                    .isAvailable(true)
+                    .build();
+            availabilityRepository.save(availability);
+        }
+
+        // Auto-create matching User account if it doesn't exist
+        if (!userRepository.existsByUsername(request.getEmail())) {
+            String defaultPassword = "password123";
+            com.Clinc_Flow.Clinic.user.User userObj = com.Clinc_Flow.Clinic.user.User.builder()
+                    .name(request.getName())
+                    .username(request.getEmail())
+                    .password(passwordEncoder.encode(defaultPassword))
+                    .role(com.Clinc_Flow.Clinic.user.User.Role.DOCTOR)
+                    .email(request.getEmail())
+                    .phone(request.getPhone())
+                    .doctorId(savedDoctor.getId())
+                    .build();
+            userRepository.save(userObj);
+        } else {
+            userRepository.findByUsername(request.getEmail()).ifPresent(u -> {
+                if (u.getRole() == com.Clinc_Flow.Clinic.user.User.Role.DOCTOR) {
+                    u.setDoctorId(savedDoctor.getId());
+                    userRepository.save(u);
+                }
+            });
+        }
+        return DoctorResponse.fromEntity(savedDoctor);
     }
 
     @Transactional
@@ -85,7 +141,14 @@ public class DoctorService {
         doctor.setGoogleCalendarEnabled(request.getGoogleCalendarEnabled() != null ? request.getGoogleCalendarEnabled() : doctor.getGoogleCalendarEnabled());
         doctor.setAchievements(toAchievementsJson(request.getAchievements()));
         doctor.setClinicId(request.getClinicId());
-        return DoctorResponse.fromEntity(doctorRepository.save(doctor));
+        Doctor savedDoctor = doctorRepository.save(doctor);
+        userRepository.findByUsername(request.getEmail()).ifPresent(u -> {
+            if (u.getRole() == com.Clinc_Flow.Clinic.user.User.Role.DOCTOR) {
+                u.setDoctorId(savedDoctor.getId());
+                userRepository.save(u);
+            }
+        });
+        return DoctorResponse.fromEntity(savedDoctor);
     }
 
     @Transactional

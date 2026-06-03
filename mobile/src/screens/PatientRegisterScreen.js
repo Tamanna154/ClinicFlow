@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
-import { register } from '../api/authApi';
+import { register, generateUsername, generatePassword } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
 import { setToken as setApiToken } from '../api/client';
 import { colors, borderRadius, shadows } from '../theme';
@@ -17,6 +17,15 @@ export default function PatientRegisterScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const autoGenerate = () => {
+    if (name.trim()) {
+      setUsername(generateUsername(name));
+    }
+    const pwd = generatePassword();
+    setPassword(pwd);
+    setConfirmPassword(pwd);
+  };
 
   const cleanPhone = () => phone.replace(/\D/g, '');
 
@@ -97,6 +106,10 @@ export default function PatientRegisterScreen({ navigation }) {
             </View>
           </View>
 
+          <TouchableOpacity style={styles.autoBtn} onPress={autoGenerate} activeOpacity={0.7}>
+            <Text style={styles.autoBtnText}>Auto-Generate Username & Password</Text>
+          </TouchableOpacity>
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Username</Text>
             <TextInput style={styles.input} value={username} onChangeText={setUsername} placeholder="Choose a username" placeholderTextColor={colors.textMuted} autoCapitalize="none" />
@@ -143,6 +156,8 @@ const styles = StyleSheet.create({
   label: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, marginBottom: 5, marginLeft: 2, textTransform: 'uppercase', letterSpacing: 0.3 },
   input: { backgroundColor: colors.bg, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.text, fontWeight: '500' },
   row: { flexDirection: 'row' },
+  autoBtn: { backgroundColor: colors.bg, borderRadius: borderRadius.md, paddingVertical: 12, alignItems: 'center', marginBottom: 14, borderWidth: 1, borderColor: colors.borderLight, borderStyle: 'dashed' },
+  autoBtnText: { fontSize: 13, color: colors.primaryLight, fontWeight: '600' },
   registerBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 15, alignItems: 'center', marginTop: 6, ...shadows.md },
   registerBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   linkWrap: { marginTop: 20, alignItems: 'center' },

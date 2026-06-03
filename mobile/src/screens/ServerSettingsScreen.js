@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator,
 } from 'react-native';
-import { getApiBase, setApiBase, initializeApiBase, resetApiBase, getDefaultApiBase } from '../api/apiBase';
+import { getApiBase, setApiBase, initializeApiBase, resetApiBase, getDefaultApiBase, quickProbe } from '../api/apiBase';
 import { colors, borderRadius, shadows } from '../theme';
 
 export default function ServerSettingsScreen({ navigation }) {
@@ -27,12 +27,35 @@ export default function ServerSettingsScreen({ navigation }) {
     setSaving(true);
     try {
       await setApiBase(trimmed);
-      Alert.alert('Saved', 'Server URL updated. Restart the app or go back and try again.');
+      Alert.alert('Saved', 'Server URL updated. Go back and try logging in.');
       navigation.goBack();
     } catch (e) {
       Alert.alert('Error', e.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const [testing, setTesting] = useState(false);
+
+  const handleTest = async () => {
+    const testUrl = url.trim().replace(/\/+$/, '');
+    setTesting(true);
+    try {
+      const result = await quickProbe(testUrl);
+      if (result.ok) {
+        Alert.alert('Connected', `✓ Server reachable at ${testUrl} (HTTP ${result.status})\n\nSave and try logging in.`);
+      } else if (result.status === 0) {
+        const knownIps = ['10.151.137.83', '10.0.2.2', '192.168.0.101', '192.168.1.101', '192.168.1.100'];
+        const suggestions = knownIps.map(ip => `http://${ip}:8080/api`).join('\n');
+        Alert.alert('Connection Failed', `${testUrl} is not reachable.\n\nTry pasting one of these URLs:\n${suggestions}\n\nAlso: verify backend is running and firewall allows port 8080.`);
+      } else {
+        Alert.alert('Wrong Endpoint', `Server at ${testUrl} responded with HTTP ${result.status}, but the API endpoint was not found.\n\nMake sure the URL includes /api (e.g. http://10.0.2.2:8080/api)`);
+      }
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -89,6 +112,15 @@ export default function ServerSettingsScreen({ navigation }) {
         </TouchableOpacity>
 
         <TouchableOpacity
+          style={[styles.testBtn, (saving || testing) && { opacity: 0.6 }]}
+          onPress={handleTest}
+          disabled={saving || testing}
+          activeOpacity={0.8}
+        >
+          {testing ? <ActivityIndicator color={colors.primary} size="small" /> : <Text style={styles.testBtnText}>Test Connection</Text>}
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.resetBtn, saving && { opacity: 0.6 }]}
           onPress={handleReset}
           disabled={saving}
@@ -118,6 +150,8 @@ const styles = StyleSheet.create({
   hint: { fontSize: 11, color: colors.textMuted, marginTop: 4, marginBottom: 20 },
   saveBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 15, alignItems: 'center', ...shadows.md, marginTop: 8 },
   saveBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  testBtn: { backgroundColor: colors.successLight, borderRadius: borderRadius.md, paddingVertical: 15, alignItems: 'center', borderWidth: 1, borderColor: colors.success + '40', marginTop: 12, minHeight: 50 },
+  testBtnText: { color: colors.success, fontSize: 15, fontWeight: '700' },
   resetBtn: { backgroundColor: colors.bg, borderRadius: borderRadius.md, paddingVertical: 15, alignItems: 'center', borderWidth: 1, borderColor: colors.border, marginTop: 12 },
   resetBtnText: { color: colors.textSecondary, fontSize: 15, fontWeight: '700' },
 });

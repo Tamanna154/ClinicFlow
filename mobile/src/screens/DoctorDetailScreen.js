@@ -151,6 +151,14 @@ export default function DoctorDetailScreen({ route, navigation }) {
               </View>
               <Text style={styles.incomeArrow}>›</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.incomeBtn} onPress={() => navigation.navigate('DoctorEarnings', { doctorId: doctor.id, doctorName: doctor.name })} activeOpacity={0.8}>
+              <Text style={styles.incomeIcon}>💰</Text>
+              <View style={styles.incomeContent}>
+                <Text style={styles.incomeTitle}>Earnings & Compensation</Text>
+                <Text style={styles.incomeSub}>Revenue share, payouts & salary</Text>
+              </View>
+              <Text style={styles.incomeArrow}>›</Text>
+            </TouchableOpacity>
           </>
         )}
 

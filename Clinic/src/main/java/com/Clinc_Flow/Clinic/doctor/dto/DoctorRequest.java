@@ -44,4 +44,9 @@ public class DoctorRequest {
     private List<AchievementDto> achievements;
 
     private Long clinicId;
+
+    private String availabilityStartTime;
+    private String availabilityEndTime;
+    private Integer slotDuration;
+    private List<String> availabilityDays;
 }

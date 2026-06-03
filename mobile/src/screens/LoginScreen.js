@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView,
@@ -14,10 +14,13 @@ export default function LoginScreen({ navigation }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [serverUrl, setServerUrl] = useState('');
+  const [serverUrl, setServerUrl] = useState(getApiBase());
   const [discovering, setDiscovering] = useState(true);
+  const probedRef = useRef(false);
 
   useEffect(() => {
+    if (probedRef.current) return;
+    probedRef.current = true;
     (async () => {
       await initializeApiBase();
       setServerUrl(getApiBase());
@@ -39,10 +42,37 @@ export default function LoginScreen({ navigation }) {
       setApiToken(data.token);
     } catch (err) {
       const msg = err.message || '';
-      Alert.alert('Login Failed', msg, [
-        { text: 'Server Settings', onPress: () => navigation.navigate('ServerSettings') },
-        { text: 'OK', style: 'cancel' },
-      ]);
+      const isNetwork = msg.includes('network') || msg.includes('timed out') || msg.includes('Unable to connect') || msg.includes('not responding') || msg.includes('reach server') || msg.includes('Cannot reach');
+      const isAuth = msg.includes('Invalid username') || msg.includes('401');
+      if (isNetwork) {
+        const tryReconnect = async () => {
+          try {
+            const { resetApiBase, initializeApiBase } = await import('../api/apiBase');
+            await resetApiBase();
+            await initializeApiBase(true);
+            const { getApiBase } = await import('../api/apiBase');
+            Alert.alert('Retrying', `Trying: ${getApiBase()}`, [
+              { text: 'Login', onPress: () => handleLogin() },
+              { text: 'Server Settings', onPress: () => navigation.navigate('ServerSettings') },
+              { text: 'Cancel', style: 'cancel' },
+            ]);
+          } catch (_) {
+            navigation.navigate('ServerSettings');
+          }
+        };
+        Alert.alert('Connection Error', `Cannot reach server at ${serverUrl}\n\n1. Ensure backend is running (java -jar Clinic.jar)\n2. Check firewall allows port 8080\n3. Try a different IP in Server Settings`, [
+          { text: 'Re-scan Network', onPress: tryReconnect },
+          { text: 'Server Settings', onPress: () => navigation.navigate('ServerSettings') },
+          { text: 'OK', style: 'cancel' },
+        ]);
+      } else if (isAuth) {
+        Alert.alert('Login Failed', 'Invalid username or password');
+      } else {
+        Alert.alert('Login Failed', msg, [
+          { text: 'Server Settings', onPress: () => navigation.navigate('ServerSettings') },
+          { text: 'OK', style: 'cancel' },
+        ]);
+      }
     } finally {
       setLoading(false);
     }
@@ -126,9 +156,14 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.linkText}>New patient? <Text style={styles.linkHighlight}>Create an account</Text></Text>
           </TouchableOpacity>
 
+          <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotWrap}>
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
+
           <View style={styles.footer}>
-            <Text style={styles.hint}>Doctor: doctor@gmail.com</Text>
-            <Text style={styles.hint}>Receptionist: receptionist@gmail.com</Text>
+            <Text style={styles.hint}>Doctor: doctor@gmail.com / doctor123</Text>
+            <Text style={styles.hint}>Admin: admin@gmail.com / admin123</Text>
+            <Text style={styles.hint}>Receptionist: receptionist@gmail.com / reception123</Text>
             <Text style={styles.serverUrl}>{serverUrl}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('ServerSettings')} style={styles.serverBtn} activeOpacity={0.7}>
               <Text style={styles.serverBtnText}>⚙ Server Settings</Text>
@@ -191,6 +226,8 @@ const styles = StyleSheet.create({
   linkWrap: { marginTop: 20, alignItems: 'center' },
   linkText: { fontSize: 13, color: colors.textSecondary },
   linkHighlight: { color: colors.primaryLight, fontWeight: '700' },
+  forgotWrap: { marginTop: 8, alignItems: 'center' },
+  forgotText: { fontSize: 13, color: colors.primaryLight, fontWeight: '600' },
   footer: { alignItems: 'center', paddingTop: 24, marginTop: 12, borderTopWidth: 1, borderTopColor: colors.borderLight },
   hint: { fontSize: 12, color: colors.textMuted, marginTop: 3, textAlign: 'center', letterSpacing: 0.2 },
   serverUrl: { fontSize: 9, color: colors.textMuted, marginTop: 6, textAlign: 'center', opacity: 0.6 },

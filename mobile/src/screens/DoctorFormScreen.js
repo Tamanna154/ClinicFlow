@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { doctorApi } from '../api/doctorApi';
 import { clinicApi } from '../api/clinicApi';
+import { compensationApi } from '../api/compensationApi';
 import { colors, borderRadius, shadows, typography } from '../theme';
 
 export default function DoctorFormScreen({ route, navigation }) {
@@ -23,15 +24,24 @@ export default function DoctorFormScreen({ route, navigation }) {
     isActive: existing?.isActive !== false,
     googleCalendarEnabled: existing?.googleCalendarEnabled ?? false,
     clinicId: existing?.clinicId ?? null,
+    availabilityStartTime: '09:00',
+    availabilityEndTime: '17:00',
+    slotDuration: '30',
   });
 
   const [achievements, setAchievements] = useState(
     existing?.achievements?.length ? existing.achievements.map(a => ({ ...a })) : []
   );
 
+  const [availabilityDays, setAvailabilityDays] = useState(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']);
   const [clinics, setClinics] = useState([]);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+
+  const [compensationType, setCompensationType] = useState(existing?.compensation?.compensationType || null);
+  const [fixedSalary, setFixedSalary] = useState(existing?.compensation?.fixedSalary ? String(existing.compensation.fixedSalary) : '');
+  const [doctorSharePercent, setDoctorSharePercent] = useState(existing?.compensation?.doctorSharePercent ? String(existing.compensation.doctorSharePercent) : '');
+  const [clinicSharePercent, setClinicSharePercent] = useState(existing?.compensation?.clinicSharePercent ? String(existing.compensation.clinicSharePercent) : '');
 
   useEffect(() => {
     clinicApi.getAll().then(setClinics).catch(() => {});
@@ -63,6 +73,11 @@ export default function DoctorFormScreen({ route, navigation }) {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = 'Invalid email format';
     if (form.phone && !/^\d{10}$/.test(form.phone.trim())) errs.phone = 'Must be 10 digits';
     if (form.consultationFee) { const f = parseFloat(form.consultationFee); if (isNaN(f) || f < 0) errs.consultationFee = 'Must be a positive number'; }
+    if (compensationType === 'REVENUE_SHARING' || compensationType === 'HYBRID') {
+      const d = parseFloat(doctorSharePercent) || 0;
+      const c = parseFloat(clinicSharePercent) || 0;
+      if (d + c !== 100) errs.compensation = 'Doctor Share + Clinic Share must equal 100%';
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -80,9 +95,39 @@ export default function DoctorFormScreen({ route, navigation }) {
         achievements: achievements.filter(a => a.title.trim()),
         clinicId: form.clinicId || null,
       };
-      if (isEdit) await doctorApi.update(existing.id, payload);
-      else await doctorApi.create(payload);
-      navigation.goBack();
+      if (!isEdit) {
+        payload.availabilityStartTime = form.availabilityStartTime.trim() || '09:00';
+        payload.availabilityEndTime = form.availabilityEndTime.trim() || '17:00';
+        payload.slotDuration = parseInt(form.slotDuration, 10) || 30;
+        payload.availabilityDays = availabilityDays;
+      }
+      let createdId;
+      if (isEdit) {
+        await doctorApi.update(existing.id, payload);
+      } else {
+        const created = await doctorApi.create(payload);
+        createdId = created.id;
+      }
+      if (compensationType) {
+        const savedId = isEdit ? existing.id : createdId;
+        await compensationApi.saveDoctorCompensation(savedId, {
+          compensationType,
+          fixedSalary: fixedSalary ? parseFloat(fixedSalary) : null,
+          doctorSharePercent: doctorSharePercent ? parseFloat(doctorSharePercent) : null,
+          clinicSharePercent: clinicSharePercent ? parseFloat(clinicSharePercent) : null,
+        });
+      }
+      if (isEdit) {
+        Alert.alert('Success', 'Doctor profile updated successfully.', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        Alert.alert(
+          'Doctor Added Successfully',
+          `Doctor profile and availability slots created.\n\nLogin Username: ${form.email.trim()}\nLogin Password: password123`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      }
     } catch (err) {
       Alert.alert('Error', err.message || 'Could not save.');
     } finally { setSaving(false); }
@@ -179,6 +224,84 @@ export default function DoctorFormScreen({ route, navigation }) {
         </View>
 
         <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Compensation</Text>
+          <Field label="Compensation Type">
+            <View style={styles.pillRow}>
+              {['FIXED_SALARY', 'REVENUE_SHARING', 'HYBRID'].map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.pill, compensationType === type && styles.pillActive]}
+                  onPress={() => setCompensationType(compensationType === type ? null : type)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.pillText, compensationType === type && styles.pillTextActive]}>
+                    {type === 'FIXED_SALARY' ? 'Fixed Salary' : type === 'REVENUE_SHARING' ? 'Revenue Sharing' : 'Hybrid'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Field>
+          {(compensationType === 'FIXED_SALARY' || compensationType === 'HYBRID') && (
+            <Field label="Fixed Salary (₹)">
+              <TextInput style={styles.input} value={fixedSalary} onChangeText={setFixedSalary} placeholder="e.g. 50000" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" />
+            </Field>
+          )}
+          {(compensationType === 'REVENUE_SHARING' || compensationType === 'HYBRID') && (
+            <>
+              <Field label="Doctor Share (%)" error={errors.compensation}>
+                <TextInput style={[styles.input, errors.compensation && styles.inputError]} value={doctorSharePercent} onChangeText={setDoctorSharePercent} placeholder="e.g. 60" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" />
+              </Field>
+              <Field label="Clinic Share (%)">
+                <TextInput style={styles.input} value={clinicSharePercent} onChangeText={setClinicSharePercent} placeholder="e.g. 40" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" />
+              </Field>
+              {errors.compensation ? null : (
+                <Text style={styles.compNote}>Doctor Share + Clinic Share must equal 100%</Text>
+              )}
+            </>
+          )}
+        </View>
+
+        {!isEdit && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Availability Setup</Text>
+            <View style={styles.timeRow}>
+              <Field label="Start Time (HH:MM)" style={{ flex: 1, marginRight: 6 }}>
+                <TextInput style={styles.input} value={form.availabilityStartTime} onChangeText={(v) => updateField('availabilityStartTime', v)} placeholder="e.g. 09:00" placeholderTextColor={colors.textMuted} />
+              </Field>
+              <Field label="End Time (HH:MM)" style={{ flex: 1, marginLeft: 6 }}>
+                <TextInput style={styles.input} value={form.availabilityEndTime} onChangeText={(v) => updateField('availabilityEndTime', v)} placeholder="e.g. 17:00" placeholderTextColor={colors.textMuted} />
+              </Field>
+            </View>
+            <Field label="Slot Duration (minutes)">
+              <TextInput style={styles.input} value={form.slotDuration} onChangeText={(v) => updateField('slotDuration', v)} placeholder="e.g. 30" placeholderTextColor={colors.textMuted} keyboardType="number-pad" />
+            </Field>
+            <Field label="Work Days">
+              <View style={styles.daysRow}>
+                {['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'].map((day) => {
+                  const active = availabilityDays.includes(day);
+                  return (
+                    <TouchableOpacity
+                      key={day}
+                      style={[styles.dayChip, active && styles.dayChipActive]}
+                      onPress={() => {
+                        if (active) {
+                          setAvailabilityDays(availabilityDays.filter(d => d !== day));
+                        } else {
+                          setAvailabilityDays([...availabilityDays, day]);
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.dayChipText, active && styles.dayChipTextActive]}>{day.substring(0, 3)}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </Field>
+          </View>
+        )}
+
+        <View style={styles.card}>
           <Text style={styles.sectionTitle}>Settings</Text>
           <ToggleRow label="Active Status" desc="Doctor can accept appointments" value={form.isActive} onToggle={() => updateField('isActive', !form.isActive)} />
           <ToggleRow label="Google Calendar Sync" desc="Auto-create events on booking" value={form.googleCalendarEnabled} onToggle={() => updateField('googleCalendarEnabled', !form.googleCalendarEnabled)} />
@@ -249,4 +372,16 @@ const styles = StyleSheet.create({
   clinicChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   clinicChipText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
   clinicChipTextActive: { color: '#FFFFFF' },
+  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pill: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: borderRadius.full, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border },
+  pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  pillText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  pillTextActive: { color: '#FFFFFF' },
+  compNote: { fontSize: 11, color: colors.textMuted, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+  timeRow: { flexDirection: 'row' },
+  daysRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  dayChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: borderRadius.sm, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border },
+  dayChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  dayChipText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  dayChipTextActive: { color: '#FFFFFF' },
 });

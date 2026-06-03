@@ -35,12 +35,79 @@ const handleResponse = async (res, defaultMsg) => {
 const hints =
   `Check: server running, correct URL (emulator: 10.0.2.2, device: LAN IP), firewall port 8080.`;
 
+export const forgotPassword = async (email, phone) => {
+  const BASE = getBase();
+  let res;
+  try {
+    res = await fetchWithTimeout(`${BASE}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email || null, phone: phone || null }),
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Server at ${BASE} not responding (timeout ${TIMEOUT_MS / 1000}s).\n${hints}`);
+    }
+    throw new Error(`Cannot reach server at ${BASE}.\n${hints}`);
+  }
+  return handleResponse(res, 'Failed to send reset request');
+};
+
+export const resetPassword = async (token, newPassword) => {
+  const BASE = getBase();
+  let res;
+  try {
+    res = await fetchWithTimeout(`${BASE}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword }),
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Server at ${BASE} not responding (timeout ${TIMEOUT_MS / 1000}s).\n${hints}`);
+    }
+    throw new Error(`Cannot reach server at ${BASE}.\n${hints}`);
+  }
+  return handleResponse(res, 'Failed to reset password');
+};
+
+export const changePassword = async (oldPassword, newPassword) => {
+  const BASE = getBase();
+  let res;
+  try {
+    res = await fetchWithTimeout(`${BASE}/auth/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPassword, newPassword }),
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Server at ${BASE} not responding (timeout ${TIMEOUT_MS / 1000}s).\n${hints}`);
+    }
+    throw new Error(`Cannot reach server at ${BASE}.\n${hints}`);
+  }
+  return handleResponse(res, 'Failed to change password');
+};
+
 const networkErrorMsg = (base, timeout = false) => {
   const header = timeout
     ? `Server at ${base} not responding (timeout ${TIMEOUT_MS / 1000}s).`
     : `Cannot reach server at ${base}.`;
   return `${header}\n${hints}`;
 };
+
+export function generateUsername(name) {
+  return name.trim().toLowerCase().replace(/\s+/g, '.').replace(/[^a-z0-9.]/g, '');
+}
+
+export function generatePassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+  let pwd = '';
+  for (let i = 0; i < 12; i++) {
+    pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pwd;
+}
 
 export const login = async (username, password) => {
   const BASE = getBase();

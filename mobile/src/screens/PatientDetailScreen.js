@@ -14,6 +14,7 @@ import Avatar from '../components/Avatar';
 import { colors, shadows, borderRadius, getGenderStyle } from '../theme';
 import { sharePrescription, downloadPrescription } from '../utils/pdfHelper';
 import { letterheadApi } from '../api/letterheadApi';
+import { prescriptionApi } from '../api/prescriptionApi';
 
 function Section({ title, children }) {
   return (
@@ -158,7 +159,13 @@ export default function PatientDetailScreen({ route, navigation }) {
                         try {
                           let lh = null;
                           try { lh = await letterheadApi.get(c.doctorId); } catch (ex) {}
-                          await sharePrescription(c, patient.name, lh);
+                          let medicines = [];
+                          try {
+                            const rx = await prescriptionApi.getByConsultation(c.id);
+                            medicines = rx.medicines || [];
+                          } catch (ex) {}
+                          const consultationWithMeds = { ...c, medicines };
+                          await sharePrescription(consultationWithMeds, patient.name, lh);
                         }
                         catch (e) { Alert.alert('Error', e.message); }
                       }}
@@ -172,7 +179,13 @@ export default function PatientDetailScreen({ route, navigation }) {
                         try {
                           let lh = null;
                           try { lh = await letterheadApi.get(c.doctorId); } catch (ex) {}
-                          await downloadPrescription(c, patient.name, lh);
+                          let medicines = [];
+                          try {
+                            const rx = await prescriptionApi.getByConsultation(c.id);
+                            medicines = rx.medicines || [];
+                          } catch (ex) {}
+                          const consultationWithMeds = { ...c, medicines };
+                          await downloadPrescription(consultationWithMeds, patient.name, lh);
                           Alert.alert('Downloaded', 'Prescription PDF saved.');
                         } catch (e) { Alert.alert('Error', e.message); }
                       }}

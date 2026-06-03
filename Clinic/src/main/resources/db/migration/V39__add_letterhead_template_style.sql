@@ -1,0 +1,1 @@
+ALTER TABLE letterheads ADD COLUMN template_style VARCHAR(50) DEFAULT 'TEMPLATE_A';

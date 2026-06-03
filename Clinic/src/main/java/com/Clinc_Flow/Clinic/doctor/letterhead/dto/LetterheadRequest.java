@@ -15,4 +15,5 @@ public class LetterheadRequest {
     private String gstNumber;
     private String registrationNumber;
     private Boolean useSystemGenerated;
+    private String templateStyle;
 }

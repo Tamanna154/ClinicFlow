@@ -104,6 +104,9 @@ public class ConsultationResponse {
                     .appointmentFee(appt.getAppointmentFee())
                     .feePaymentStatus(appt.getFeePaymentStatus())
                     .build());
+            if (appt.getDoctor() != null) {
+                resp.setDoctorName(appt.getDoctor().getName());
+            }
         }
 
         return resp;
