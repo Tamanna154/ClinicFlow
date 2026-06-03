@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform,
   ActivityIndicator, Alert, TextInput, Dimensions, StatusBar,
+  Modal, FlatList,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { prescriptionApi } from '../api/prescriptionApi';

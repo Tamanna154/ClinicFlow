@@ -1,0 +1,18 @@
+ALTER TABLE clinics ADD COLUMN city VARCHAR(100);
+ALTER TABLE clinics ADD COLUMN state VARCHAR(100);
+ALTER TABLE clinics ADD COLUMN country VARCHAR(100);
+ALTER TABLE clinics ADD COLUMN pincode VARCHAR(20);
+ALTER TABLE clinics ADD COLUMN gst_number VARCHAR(50);
+ALTER TABLE clinics ADD COLUMN registration_number VARCHAR(100);
+ALTER TABLE clinics ADD COLUMN working_hours TEXT;
+ALTER TABLE clinics ADD COLUMN consultation_fees DECIMAL(10,2);
+ALTER TABLE clinics ADD COLUMN clinic_specialization VARCHAR(200);
+ALTER TABLE clinics ADD COLUMN social_media_links TEXT;
+ALTER TABLE clinics ADD COLUMN time_zone VARCHAR(50);
+ALTER TABLE clinics ADD COLUMN currency VARCHAR(10) DEFAULT 'INR';
+ALTER TABLE clinics ADD COLUMN appointment_duration INTEGER DEFAULT 15;
+ALTER TABLE clinics ADD COLUMN sms_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE clinics ADD COLUMN whatsapp_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE clinics ADD COLUMN email_notifications_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE clinics ADD COLUMN is_verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE clinics ADD COLUMN clinic_admin_user_id BIGINT REFERENCES users(id);

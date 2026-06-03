@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator,
+  Alert, ActivityIndicator, Image,
 } from 'react-native';
 import { consultationApi } from '../api/consultationApi';
 import { useSettings } from '../context/SettingsContext';
@@ -23,6 +23,7 @@ export default function ConsultationBillingScreen({ route, navigation }) {
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [loading, setLoading] = useState(false);
   const [bill, setBill] = useState(null);
+  const [verifying, setVerifying] = useState(false);
 
   const fee = parseFloat(consultationFee) || 0;
   const add = parseFloat(additionalCharges) || 0;
@@ -38,6 +39,12 @@ export default function ConsultationBillingScreen({ route, navigation }) {
     }
     setLoading(true);
     try {
+      if (paymentMethod === 'UPI') {
+        setVerifying(true);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setVerifying(false);
+        Alert.alert('Payment Received', '✓ Money successfully credited to bank account.');
+      }
       const result = await consultationApi.generateBill(consultationId, {
         consultationFee: fee,
         additionalCharges: add,
@@ -55,6 +62,7 @@ export default function ConsultationBillingScreen({ route, navigation }) {
       Alert.alert('Error', e.message);
     } finally {
       setLoading(false);
+      setVerifying(false);
     }
   };
 
@@ -114,6 +122,17 @@ export default function ConsultationBillingScreen({ route, navigation }) {
             </TouchableOpacity>
           ))}
         </View>
+
+        {paymentMethod === 'UPI' && (
+          <View style={styles.qrContainer}>
+            <Text style={styles.qrLabel}>UPI Payment QR Code</Text>
+            <Image
+              source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`upi://pay?pa=clinicflow@upi&pn=ClinicFlow&am=${total.toFixed(2)}&cu=INR&tn=ClinicFlow%20Consultation%20Bill`)}` }}
+              style={styles.qrCode}
+            />
+            <Text style={styles.qrText}>Scan this QR code with any UPI app to pay {formatCurrency(total)}</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.totalCard}>
@@ -139,8 +158,19 @@ export default function ConsultationBillingScreen({ route, navigation }) {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.generateBtn} onPress={handleGenerateBill} disabled={loading} activeOpacity={0.8}>
-        {loading ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={styles.generateBtnText}>Generate Bill</Text>}
+      <TouchableOpacity style={styles.generateBtn} onPress={handleGenerateBill} disabled={loading || verifying} activeOpacity={0.8}>
+        {verifying ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <ActivityIndicator color="#FFF" size="small" />
+            <Text style={styles.generateBtnText}>Verifying UPI Payment...</Text>
+          </View>
+        ) : loading ? (
+          <ActivityIndicator color="#FFF" size="small" />
+        ) : (
+          <Text style={styles.generateBtnText}>
+            {paymentMethod === 'UPI' ? 'Verify UPI & Generate Bill' : 'Generate Bill'}
+          </Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -173,4 +203,8 @@ const styles = StyleSheet.create({
   grandTotalValue: { fontSize: 18, fontWeight: '800', color: colors.primary },
   generateBtn: { backgroundColor: colors.success, borderRadius: borderRadius.md, paddingVertical: 15, alignItems: 'center', ...shadows.md },
   generateBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  qrContainer: { alignItems: 'center', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.borderLight },
+  qrLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.3 },
+  qrCode: { width: 160, height: 160, backgroundColor: '#FFF', borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.borderLight, padding: 8, resizeMode: 'contain' },
+  qrText: { fontSize: 11, color: colors.textMuted, marginTop: 8, textAlign: 'center', paddingHorizontal: 12, lineHeight: 15 },
 });

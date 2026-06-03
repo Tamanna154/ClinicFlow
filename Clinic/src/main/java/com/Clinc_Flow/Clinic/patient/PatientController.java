@@ -21,6 +21,7 @@ public class PatientController {
     private final PatientService patientService;
     private final PatientVisitService patientVisitService;
     private final BillRepository billRepository;
+    private final PatientStatsService patientStatsService;
 
     @GetMapping
     public ResponseEntity<List<PatientResponse>> getAllPatients(
@@ -102,6 +103,11 @@ public class PatientController {
         JwtUserDetails user = (JwtUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         com.Clinc_Flow.Clinic.patient.dto.PatientVisitResponse response = patientVisitService.createVisit(request, user.userId(), null);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/stats/overview")
+    public ResponseEntity<PatientStatsResponse> getPatientStats() {
+        return ResponseEntity.ok(patientStatsService.getOverview());
     }
 
     @GetMapping("/search")

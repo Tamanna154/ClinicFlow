@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -29,4 +30,12 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     long countByDoctorIdAndAppointmentDateAndStatusNot(
             Long doctorId, LocalDate date, String status);
+
+    long countByAppointmentDate(LocalDate date);
+
+    long countByAppointmentDateAndStatus(LocalDate date, String status);
+
+    long countByAppointmentDateAndStatusNotIn(LocalDate date, Collection<String> statuses);
+
+    long countByAppointmentDateAfter(LocalDate date);
 }

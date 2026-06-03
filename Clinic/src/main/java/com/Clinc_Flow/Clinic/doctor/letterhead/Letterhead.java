@@ -50,6 +50,9 @@ public class Letterhead {
     @Column(name = "use_system_generated", nullable = false)
     private Boolean useSystemGenerated;
 
+    @Column(name = "template_style", length = 50)
+    private String templateStyle;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 

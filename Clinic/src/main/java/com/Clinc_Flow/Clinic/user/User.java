@@ -3,6 +3,7 @@ package com.Clinc_Flow.Clinic.user;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
@@ -30,6 +31,18 @@ public class User {
     @Column(name = "patient_id")
     private Long patientId;
 
+    @Column(length = 255)
+    private String email;
+
+    @Column(length = 20)
+    private String phone;
+
+    @Column(name = "reset_token", length = 255)
+    private String resetToken;
+
+    @Column(name = "reset_token_expiry")
+    private LocalDateTime resetTokenExpiry;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -41,5 +54,5 @@ public class User {
     @PreUpdate
     protected void onUpdate() { updatedAt = OffsetDateTime.now(); }
 
-    public enum Role { DOCTOR, RECEPTIONIST, PATIENT }
+    public enum Role { DOCTOR, RECEPTIONIST, PATIENT, CLINIC_ADMIN, SUPER_ADMIN }
 }

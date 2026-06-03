@@ -14,4 +14,6 @@ public interface DoctorRepository extends JpaRepository<Doctor, Long> {
     List<Doctor> findByIsActiveTrue();
 
     boolean existsByEmail(String email);
+
+    java.util.Optional<Doctor> findByEmail(String email);
 }

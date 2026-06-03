@@ -4,9 +4,7 @@ import com.Clinc_Flow.Clinic.config.JwtTokenProvider;
 import com.Clinc_Flow.Clinic.config.JwtUserDetails;
 import com.Clinc_Flow.Clinic.staff.DoctorStaffService;
 import com.Clinc_Flow.Clinic.staff.Permission;
-import com.Clinc_Flow.Clinic.user.dto.AuthResponse;
-import com.Clinc_Flow.Clinic.user.dto.LoginRequest;
-import com.Clinc_Flow.Clinic.user.dto.RegisterRequest;
+import com.Clinc_Flow.Clinic.user.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -45,11 +43,50 @@ public class UserController {
                     request.getName(),
                     request.getUsername(),
                     request.getPassword(),
-                    User.Role.PATIENT);
+                    User.Role.PATIENT,
+                    request.getEmail(),
+                    request.getPhone());
             String token = jwtTokenProvider.generateToken(
                     user.getId(), user.getUsername(), user.getRole().name());
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(toAuthResponse(token, user));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        try {
+            String token = userService.forgotPassword(request.getEmail(), request.getPhone());
+            return ResponseEntity.ok(Map.of(
+                "message", "If an account exists with that information, a reset link has been sent.",
+                "token", token
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        try {
+            userService.resetPassword(request.getToken(), request.getNewPassword());
+            return ResponseEntity.ok(Map.of("message", "Password reset successfully. You can now log in."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request) {
+        try {
+            JwtUserDetails user = (JwtUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            userService.changePassword(user.userId(), request.getOldPassword(), request.getNewPassword());
+            return ResponseEntity.ok(Map.of("message", "Password changed successfully."));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", e.getMessage()));

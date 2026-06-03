@@ -50,6 +50,9 @@ public class LetterheadService {
         if (req.getUseSystemGenerated() != null) {
             lh.setUseSystemGenerated(req.getUseSystemGenerated());
         }
+        if (req.getTemplateStyle() != null) {
+            lh.setTemplateStyle(req.getTemplateStyle());
+        }
         lh = letterheadRepository.save(lh);
         return LetterheadResponse.fromEntity(lh, getBaseUrl(request));
     }

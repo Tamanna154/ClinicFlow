@@ -73,4 +73,12 @@ export const clinicApi = {
     if (!res.ok) throw new Error('Search failed');
     return res.json();
   },
+
+  async getMyClinic() {
+    const apiBase = await getApiBase();
+    const res = await authFetch(`${apiBase}/clinics`);
+    if (!res.ok) throw new Error('Failed to fetch clinics');
+    const clinics = await res.json();
+    return clinics.length > 0 ? clinics[0] : null;
+  },
 };

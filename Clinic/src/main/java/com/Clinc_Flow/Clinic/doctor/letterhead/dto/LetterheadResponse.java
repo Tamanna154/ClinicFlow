@@ -21,6 +21,7 @@ public class LetterheadResponse {
     private String gstNumber;
     private String registrationNumber;
     private Boolean useSystemGenerated;
+    private String templateStyle;
     private Boolean isActive;
 
     public static LetterheadResponse fromEntity(Letterhead lh, String baseUrl) {
@@ -37,6 +38,7 @@ public class LetterheadResponse {
                 .gstNumber(lh.getGstNumber())
                 .registrationNumber(lh.getRegistrationNumber())
                 .useSystemGenerated(lh.getUseSystemGenerated())
+                .templateStyle(lh.getTemplateStyle())
                 .isActive(lh.getIsActive())
                 .build();
     }

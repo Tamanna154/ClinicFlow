@@ -260,7 +260,7 @@ export default function ConsultationScreen({ route, navigation }) {
               style={styles.rxActionBtn}
               onPress={async () => {
                 try {
-                  const data = { doctorNotes, diagnosis, symptoms, bloodPressure, pulseRate: pulseRate ? parseInt(pulseRate) : null, weight: weight ? parseFloat(weight) : null, temperature: temperature ? parseFloat(temperature) : null, oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null, followUpDate, createdAt: consultation?.createdAt || new Date().toISOString(), medicines: existingPrescription?.medicines || [] };
+                  const data = { doctorNotes, diagnosis, symptoms, bloodPressure, pulseRate: pulseRate ? parseInt(pulseRate) : null, weight: weight ? parseFloat(weight) : null, temperature: temperature ? parseFloat(temperature) : null, oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null, followUpDate, createdAt: consultation?.createdAt || new Date().toISOString(), medicines: existingPrescription?.medicines || [], doctorName: appointment.doctorName || user?.name || 'Doctor' };
                   let lh = null;
                   try { lh = await letterheadApi.get(user?.doctorId); } catch (ex) {}
                   await sharePrescription(data, appointment.patientName, lh);
@@ -275,7 +275,7 @@ export default function ConsultationScreen({ route, navigation }) {
               style={styles.rxActionBtn}
               onPress={async () => {
                 try {
-                  const data = { doctorNotes, diagnosis, symptoms, bloodPressure, pulseRate: pulseRate ? parseInt(pulseRate) : null, weight: weight ? parseFloat(weight) : null, temperature: temperature ? parseFloat(temperature) : null, oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null, followUpDate, createdAt: consultation?.createdAt || new Date().toISOString(), medicines: existingPrescription?.medicines || [] };
+                  const data = { doctorNotes, diagnosis, symptoms, bloodPressure, pulseRate: pulseRate ? parseInt(pulseRate) : null, weight: weight ? parseFloat(weight) : null, temperature: temperature ? parseFloat(temperature) : null, oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null, followUpDate, createdAt: consultation?.createdAt || new Date().toISOString(), medicines: existingPrescription?.medicines || [], doctorName: appointment.doctorName || user?.name || 'Doctor' };
                   let lh = null;
                   try { lh = await letterheadApi.get(user?.doctorId); } catch (ex) {}
                   await downloadPrescription(data, appointment.patientName, lh);

@@ -41,7 +41,7 @@ public class LetterheadController {
                 .getAuthentication().getPrincipal();
         User currentUser = userRepository.findById(user.userId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        if (!currentUser.getDoctorId().equals(doctorId)) {
+        if (currentUser.getDoctorId() == null || !currentUser.getDoctorId().equals(doctorId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(letterheadService.saveLetterhead(doctorId, req, request));
@@ -58,7 +58,7 @@ public class LetterheadController {
                 .getAuthentication().getPrincipal();
         User currentUser = userRepository.findById(user.userId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        if (!currentUser.getDoctorId().equals(doctorId)) {
+        if (currentUser.getDoctorId() == null || !currentUser.getDoctorId().equals(doctorId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(letterheadService.uploadImage(doctorId, field, file, request));
