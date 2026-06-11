@@ -12,6 +12,7 @@ import { useSettings } from '../context/SettingsContext';
 import { sharePrescription, downloadPrescription } from '../utils/pdfHelper';
 import { letterheadApi } from '../api/letterheadApi';
 import { prescriptionApi } from '../api/prescriptionApi';
+import { DatePickerModal } from '../components/DateTimePickerModal';
 
 export default function ConsultationScreen({ route, navigation }) {
   const { appointment } = route.params;
@@ -30,9 +31,11 @@ export default function ConsultationScreen({ route, navigation }) {
   const [height, setHeight] = useState('');
   const [temperature, setTemperature] = useState('');
   const [oxygenLevel, setOxygenLevel] = useState('');
+  const [bloodSugar, setBloodSugar] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [existingPrescription, setExistingPrescription] = useState(null);
   const { formatCurrency } = useSettings();
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
 
   useFocusEffect(useCallback(() => {
     loadConsultation();
@@ -51,6 +54,7 @@ export default function ConsultationScreen({ route, navigation }) {
       setHeight(existing.height != null ? String(existing.height) : '');
       setTemperature(existing.temperature != null ? String(existing.temperature) : '');
       setOxygenLevel(existing.oxygenLevel != null ? String(existing.oxygenLevel) : '');
+      setBloodSugar(existing.bloodSugar || '');
       setFollowUpDate(existing.followUpDate || '');
       setStarted(existing.status === 'IN_PROGRESS' || existing.status === 'COMPLETED');
       try {
@@ -95,6 +99,7 @@ export default function ConsultationScreen({ route, navigation }) {
         height: height ? parseFloat(height) : null,
         temperature: temperature ? parseFloat(temperature) : null,
         oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null,
+        bloodSugar: bloodSugar.trim() || null,
         followUpDate: followUpDate.trim() || null,
       });
       const updated = await consultationApi.getByAppointment(appointment.id);
@@ -127,6 +132,7 @@ export default function ConsultationScreen({ route, navigation }) {
               height: height ? parseFloat(height) : null,
               temperature: temperature ? parseFloat(temperature) : null,
               oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null,
+              bloodSugar: bloodSugar.trim() || null,
               followUpDate: followUpDate.trim() || null,
             });
             await consultationApi.completeConsultation(id);
@@ -212,12 +218,24 @@ export default function ConsultationScreen({ route, navigation }) {
                 <Text style={styles.vitalLabel}>SpO2 (%)</Text>
                 <TextInput style={styles.vitalInput} value={oxygenLevel} onChangeText={setOxygenLevel} placeholder="98" placeholderTextColor={colors.textMuted} keyboardType="numeric" />
               </View>
+              <View style={styles.vitalItem}>
+                <Text style={styles.vitalLabel}>Sugar (mg/dL)</Text>
+                <TextInput style={styles.vitalInput} value={bloodSugar} onChangeText={setBloodSugar} placeholder="e.g. 110" placeholderTextColor={colors.textMuted} />
+              </View>
             </View>
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Follow-Up</Text>
-            <TextInput style={styles.input} value={followUpDate} onChangeText={setFollowUpDate} placeholder="YYYY-MM-DD or 3d, 7d, 15d" placeholderTextColor={colors.textMuted} />
+            <TouchableOpacity 
+              style={[styles.input, { justifyContent: 'center', minHeight: 45 }]} 
+              onPress={() => setDatePickerVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: followUpDate ? colors.text : colors.textMuted, fontSize: 14, fontWeight: '500' }}>
+                {followUpDate || 'Select Follow-up Date'}
+              </Text>
+            </TouchableOpacity>
             <View style={styles.followUpBtns}>
               {['3d', '7d', '15d', '30d'].map(opt => (
                 <TouchableOpacity key={opt} style={styles.followUpBtn} onPress={() => {
@@ -260,7 +278,7 @@ export default function ConsultationScreen({ route, navigation }) {
               style={styles.rxActionBtn}
               onPress={async () => {
                 try {
-                  const data = { doctorNotes, diagnosis, symptoms, bloodPressure, pulseRate: pulseRate ? parseInt(pulseRate) : null, weight: weight ? parseFloat(weight) : null, temperature: temperature ? parseFloat(temperature) : null, oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null, followUpDate, createdAt: consultation?.createdAt || new Date().toISOString(), medicines: existingPrescription?.medicines || [], doctorName: appointment.doctorName || user?.name || 'Doctor' };
+                  const data = { doctorNotes, diagnosis, symptoms, bloodPressure, bloodSugar, pulseRate: pulseRate ? parseInt(pulseRate) : null, weight: weight ? parseFloat(weight) : null, temperature: temperature ? parseFloat(temperature) : null, oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null, followUpDate, createdAt: consultation?.createdAt || new Date().toISOString(), medicines: existingPrescription?.medicines || [], doctorName: appointment.doctorName || user?.name || 'Doctor' };
                   let lh = null;
                   try { lh = await letterheadApi.get(user?.doctorId); } catch (ex) {}
                   await sharePrescription(data, appointment.patientName, lh);
@@ -275,7 +293,7 @@ export default function ConsultationScreen({ route, navigation }) {
               style={styles.rxActionBtn}
               onPress={async () => {
                 try {
-                  const data = { doctorNotes, diagnosis, symptoms, bloodPressure, pulseRate: pulseRate ? parseInt(pulseRate) : null, weight: weight ? parseFloat(weight) : null, temperature: temperature ? parseFloat(temperature) : null, oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null, followUpDate, createdAt: consultation?.createdAt || new Date().toISOString(), medicines: existingPrescription?.medicines || [], doctorName: appointment.doctorName || user?.name || 'Doctor' };
+                  const data = { doctorNotes, diagnosis, symptoms, bloodPressure, bloodSugar, pulseRate: pulseRate ? parseInt(pulseRate) : null, weight: weight ? parseFloat(weight) : null, temperature: temperature ? parseFloat(temperature) : null, oxygenLevel: oxygenLevel ? parseFloat(oxygenLevel) : null, followUpDate, createdAt: consultation?.createdAt || new Date().toISOString(), medicines: existingPrescription?.medicines || [], doctorName: appointment.doctorName || user?.name || 'Doctor' };
                   let lh = null;
                   try { lh = await letterheadApi.get(user?.doctorId); } catch (ex) {}
                   await downloadPrescription(data, appointment.patientName, lh);
@@ -290,6 +308,14 @@ export default function ConsultationScreen({ route, navigation }) {
           </View>
         </>
       )}
+
+      <DatePickerModal
+        visible={datePickerVisible}
+        onClose={() => setDatePickerVisible(false)}
+        onSelect={(date) => setFollowUpDate(date)}
+        value={followUpDate}
+        minDate={new Date().toISOString().split('T')[0]}
+      />
     </ScrollView>
   );
 }

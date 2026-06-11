@@ -12,5 +12,8 @@ public class AuthResponse {
     private String role;
     private Long doctorId;
     private Long patientId;
+    private String email;
+    private String phone;
+    private String roleTitle;
     private List<String> permissions;
 }

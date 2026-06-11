@@ -19,8 +19,9 @@ public class ExpenseResponse {
     private OffsetDateTime expenseDate;
     private Long createdBy;
     private OffsetDateTime createdAt;
+    private String billImageUrl;
 
-    public static ExpenseResponse fromEntity(Expense expense) {
+    public static ExpenseResponse fromEntity(Expense expense, String baseUrl) {
         return ExpenseResponse.builder()
                 .id(expense.getId())
                 .expenseCategory(expense.getExpenseCategory())
@@ -29,6 +30,11 @@ public class ExpenseResponse {
                 .expenseDate(expense.getExpenseDate())
                 .createdBy(expense.getCreatedBy())
                 .createdAt(expense.getCreatedAt())
+                .billImageUrl(expense.getBillImagePath() != null && baseUrl != null ? baseUrl + "/uploads/" + expense.getBillImagePath() : null)
                 .build();
+    }
+
+    public static ExpenseResponse fromEntity(Expense expense) {
+        return fromEntity(expense, null);
     }
 }

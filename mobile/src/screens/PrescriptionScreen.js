@@ -85,6 +85,36 @@ export default function PrescriptionScreen({ route, navigation }) {
       Alert.alert('Already added', `${item.itemName} is already in the prescription.`);
       return;
     }
+    // Check stock
+    if ((item.quantity || 0) <= 0) {
+      Alert.alert(
+        '⚠️ Out of Stock',
+        `${item.itemName} is currently out of stock.\n\nSuggestions:\n• Search for an alternative medicine above.\n• Or add as "Buy from Medical" — patient purchases externally, price won't count in bill.`,
+        [
+          { text: 'Add as External', onPress: () => {
+            setMedicines([...medicines, {
+              id: Date.now().toString(),
+              inventoryItemId: null,
+              medicineName: item.itemName,
+              dosage: '',
+              frequency: '',
+              duration: '',
+              quantity: 1,
+              instructions: '',
+              stockAvailable: 0,
+              sellingPrice: 0,
+              stockType: 'EXTERNAL',
+              isExternalPurchase: true,
+            }]);
+            setSearchQuery('');
+            setSearchResults([]);
+            setShowSearch(false);
+          }},
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
     setMedicines([...medicines, {
       id: Date.now().toString(),
       inventoryItemId: item.id,
@@ -112,6 +142,7 @@ export default function PrescriptionScreen({ route, navigation }) {
   };
 
   const totalCharge = medicines.reduce((sum, m) => {
+    if (m.isExternalPurchase) return sum;
     if (m.stockType === 'EXTERNAL' && m.sellingPrice > 0) {
       return sum + (m.sellingPrice * (m.quantity || 1));
     }
@@ -172,11 +203,19 @@ export default function PrescriptionScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
             <View style={styles.stockRow}>
-              <Text style={[styles.stockText, (med.stockAvailable || 0) < 10 ? styles.stockLow : styles.stockOk]}>
-                Stock: {med.stockAvailable || 0}
-              </Text>
-              {med.sellingPrice > 0 && med.stockType === 'EXTERNAL' && (
-                <Text style={styles.priceText}>₹{med.sellingPrice}/unit</Text>
+              {med.isExternalPurchase ? (
+                <View style={styles.externalBadge}>
+                  <Text style={styles.externalBadgeText}>🛒 Buy from Medical</Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={[styles.stockText, (med.stockAvailable || 0) < 10 ? styles.stockLow : styles.stockOk]}>
+                    Stock: {med.stockAvailable || 0}
+                  </Text>
+                  {med.sellingPrice > 0 && med.stockType === 'EXTERNAL' && (
+                    <Text style={styles.priceText}>₹{med.sellingPrice}/unit</Text>
+                  )}
+                </>
               )}
             </View>
             <View style={styles.medRow}>
@@ -255,16 +294,22 @@ export default function PrescriptionScreen({ route, navigation }) {
             data={searchResults}
             keyExtractor={(item) => String(item.id)}
             renderItem={({ item }) => (
-              <TouchableOpacity style={styles.resultCard} onPress={() => addMedicine(item)} activeOpacity={0.7}>
+              <TouchableOpacity style={[styles.resultCard, (item.quantity || 0) <= 0 && styles.resultCardOos]} onPress={() => addMedicine(item)} activeOpacity={0.7}>
                 <View style={styles.resultInfo}>
-                  <Text style={styles.resultName}>{item.itemName}</Text>
+                  <Text style={[styles.resultName, (item.quantity || 0) <= 0 && { color: colors.error }]}>{item.itemName}</Text>
                   <Text style={styles.resultDetail}>
-                    Stock: {item.quantity} {item.unitType || 'units'}
-                    {item.sellingPrice > 0 ? ` | ₹${item.sellingPrice}/unit` : ''}
+                    {item.quantity > 0 ? `Stock: ${item.quantity} ${item.unitType || 'units'}` : 'Out of Stock'}
+                    {item.sellingPrice > 0 && ` | ₹${item.sellingPrice}/unit`}
                   </Text>
-                  {(item.quantity || 0) <= 0 && <Text style={styles.outOfStock}>Out of Stock</Text>}
+                  {(item.quantity || 0) <= 0 && (
+                    <View style={styles.oosSuggestion}>
+                      <Text style={styles.oosSuggestionText}>Tap to add as "Buy from Medical" (not billed)</Text>
+                    </View>
+                  )}
                 </View>
-                <Text style={styles.addIcon}>+</Text>
+                <Text style={[styles.addIcon, (item.quantity || 0) <= 0 && { color: colors.warning }]}>
+                  {(item.quantity || 0) <= 0 ? '🛒' : '+'}
+                </Text>
               </TouchableOpacity>
             )}
             ListEmptyComponent={!searching && searchQuery.trim() ? (
@@ -291,6 +336,11 @@ const styles = StyleSheet.create({
   medHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   medName: { fontSize: 16, fontWeight: '700', color: colors.text, flex: 1 },
   removeBtn: { fontSize: 18, color: colors.error, fontWeight: '700', marginLeft: 8 },
+  externalBadge: {
+    backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6,
+    borderWidth: 1, borderColor: '#F59E0B',
+  },
+  externalBadgeText: { fontSize: 11, fontWeight: '700', color: '#D97706' },
   stockRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
   stockText: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
   stockOk: { backgroundColor: colors.successLight, color: colors.success },
@@ -325,10 +375,13 @@ const styles = StyleSheet.create({
   searchInput: { backgroundColor: colors.surface, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: colors.text, marginHorizontal: 16, marginBottom: 8 },
   resultList: { padding: 16 },
   resultCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.md, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm },
+  resultCardOos: { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' },
   resultInfo: { flex: 1 },
   resultName: { fontSize: 15, fontWeight: '700', color: colors.text },
   resultDetail: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   outOfStock: { fontSize: 11, fontWeight: '700', color: colors.error, marginTop: 2 },
+  oosSuggestion: { backgroundColor: '#FEF3C7', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 4, alignSelf: 'flex-start' },
+  oosSuggestionText: { fontSize: 9, fontWeight: '600', color: '#D97706' },
   addIcon: { fontSize: 22, color: colors.primary, fontWeight: '700' },
   emptyText: { textAlign: 'center', color: colors.textMuted, fontSize: 13, marginTop: 32 },
 });

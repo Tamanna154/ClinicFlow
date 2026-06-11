@@ -59,8 +59,14 @@ public class LetterheadService {
 
     @Transactional
     public LetterheadResponse uploadImage(Long doctorId, String field, MultipartFile file, HttpServletRequest request) {
-        Letterhead lh = letterheadRepository.findByDoctorId(doctorId)
-                .orElseThrow(() -> new ResourceNotFoundException("Letterhead", doctorId));
+        Letterhead lh = letterheadRepository.findByDoctorId(doctorId).orElse(null);
+        if (lh == null) {
+            lh = Letterhead.builder()
+                    .doctorId(doctorId)
+                    .useSystemGenerated(false)
+                    .isActive(true)
+                    .build();
+        }
 
         try {
             String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();

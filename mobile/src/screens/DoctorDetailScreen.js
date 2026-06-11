@@ -104,6 +104,23 @@ export default function DoctorDetailScreen({ route, navigation }) {
           <Row icon="🎓" label="Qualifications" value={doctor.qualifications} />
         </Section>
 
+        {(doctor.tempUsername || doctor.email) && (
+          <Section title="Login Credentials">
+            {doctor.tempUsername && <Row icon="👤" label="Username" value={doctor.tempUsername} />}
+            {doctor.email && <Row icon="✉️" label="Email" value={doctor.email} />}
+            {doctor.tempPassword && (
+              <View style={styles.credNote}>
+                <Text style={styles.credNoteIcon}>🔑</Text>
+                <Text style={styles.credNoteText}>Default Password: <Text style={{ fontWeight: '800' }}>{doctor.tempPassword}</Text></Text>
+              </View>
+            )}
+            <View style={styles.credNote}>
+              <Text style={styles.credNoteIcon}>ℹ️</Text>
+              <Text style={styles.credNoteText}>Doctor can login using email and the temporary password. Change password after first login.</Text>
+            </View>
+          </Section>
+        )}
+
         {doctor.achievements?.length > 0 && (
           <Section title="Achievements">
             {doctor.achievements.map((ach, idx) => (
@@ -278,4 +295,10 @@ const styles = StyleSheet.create({
   achievementTitle: { fontSize: 14, fontWeight: '700', color: colors.text, flex: 1, marginRight: 8 },
   achievementYear: { fontSize: 12, fontWeight: '600', color: colors.primary },
   achievementDesc: { fontSize: 12, color: colors.textSecondary, fontWeight: '500', lineHeight: 18 },
+  credNote: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.infoLight,
+    borderRadius: borderRadius.sm, padding: 10, marginTop: 8,
+  },
+  credNoteIcon: { fontSize: 14, marginRight: 8 },
+  credNoteText: { fontSize: 12, color: colors.text, fontWeight: '500', flex: 1 },
 });

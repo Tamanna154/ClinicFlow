@@ -116,7 +116,7 @@ export default function InventoryListScreen({ navigation }) {
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={[styles.cardName, item.archived && styles.cardNameArchived]} numberOfLines={1}>{item.itemName}</Text>
-                  <Text style={styles.cardMeta}>{item.category || item.stockType} · {item.unitType || 'unit'}</Text>
+                  <Text style={styles.cardMeta}>{(item.category || (item.stockType === 'INTERNAL' ? 'In-House' : 'Store'))} · {item.unitType || 'unit'}</Text>
                 </View>
                 <View style={[styles.badge, { backgroundColor: badge.bg }]}>
                   <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
@@ -164,7 +164,7 @@ function ScrollableChips({ options, selected, onSelect }) {
           style={[styles.chip, selected === o && styles.chipActive]}
           onPress={() => onSelect(o)}
         >
-          <Text style={[styles.chipText, selected === o && styles.chipTextActive]}>{o === 'ALL' ? 'All' : o === 'INTERNAL' ? 'Internal' : 'External'}</Text>
+          <Text style={[styles.chipText, selected === o && styles.chipTextActive]}>{o === 'ALL' ? 'All' : o === 'INTERNAL' ? 'In-House' : 'Store'}</Text>
         </TouchableOpacity>
       ))}
     </View>

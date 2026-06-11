@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert,
-  ActivityIndicator, Linking, Platform,
+  ActivityIndicator, Linking, Platform, Modal, TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { patientApi } from '../api/patientApi';
@@ -53,6 +53,14 @@ export default function PatientDetailScreen({ route, navigation }) {
   const [bills, setBills] = useState([]);
   const [consultations, setConsultations] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [familyMembers, setFamilyMembers] = useState([]);
+  const [familyModalVisible, setFamilyModalVisible] = useState(false);
+  const [famName, setFamName] = useState('');
+  const [famRelationship, setFamRelationship] = useState('Spouse');
+  const [famAge, setFamAge] = useState('');
+  const [famGender, setFamGender] = useState('Male');
+  const [famPhone, setFamPhone] = useState('');
+  const [famHistory, setFamHistory] = useState('');
   const { user } = useAuth();
   const { hasPermission } = usePermission();
   const { formatCurrency } = useSettings();
@@ -70,9 +78,54 @@ export default function PatientDetailScreen({ route, navigation }) {
       catch (e) { console.log(e.message); }
       try { const c = await consultationApi.getPatientHistory(initial.id); if (mounted) setConsultations(c); }
       catch (e) { console.log(e.message); }
+      try {
+        const base = require('../api/apiBase').getApiBase();
+        const res = await require('../api/client').authFetch(`${base}/patients/${initial.id}/family`);
+        if (res.ok && mounted) {
+          const data = await res.json();
+          setFamilyMembers(data);
+        }
+      } catch (e) {
+        console.log(e.message);
+      }
     })();
     return () => { mounted = false; };
   }, [initial.id]));
+
+  const handleAddFamilyMember = async () => {
+    if (!famName.trim()) { Alert.alert('Required', 'Please enter a name'); return; }
+    try {
+      const base = require('../api/apiBase').getApiBase();
+      const res = await require('../api/client').authFetch(`${base}/patients/${patient.id}/family`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: famName.trim(),
+          relationship: famRelationship,
+          age: famAge ? parseInt(famAge, 10) : null,
+          gender: famGender,
+          phone: famPhone.trim() || null,
+          medicalHistory: famHistory.trim() || null
+        })
+      });
+      if (res.ok) {
+        Alert.alert('Success', 'Family member added!');
+        setFamilyModalVisible(false);
+        setFamName('');
+        setFamRelationship('Spouse');
+        setFamAge('');
+        setFamGender('Male');
+        setFamPhone('');
+        setFamHistory('');
+        const refreshed = await res.json();
+        setFamilyMembers(prev => [...prev, refreshed]);
+      } else {
+        Alert.alert('Error', 'Failed to add family member');
+      }
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    }
+  };
 
   const handleEdit = () => navigation.navigate('PatientForm', { patient });
   const handleDelete = () => {
@@ -130,6 +183,49 @@ export default function PatientDetailScreen({ route, navigation }) {
           <Row icon="⚕️" label="Allergies" value={patient.allergies} />
           <Row icon="📋" label="Medical History" value={patient.medicalHistory} />
           <Row icon="💊" label="Medications" value={patient.medications} />
+        </Section>
+
+        <Section title="Family Members">
+          {canManage && (
+            <TouchableOpacity style={styles.addFamilyInlineBtn} onPress={() => setFamilyModalVisible(true)} activeOpacity={0.7}>
+              <Text style={styles.addFamilyInlineText}>+ Add Member</Text>
+            </TouchableOpacity>
+          )}
+          {familyMembers.length === 0 ? (
+            <Text style={{ fontSize: 13, color: colors.textMuted, fontStyle: 'italic', marginTop: 4 }}>No family members added</Text>
+          ) : (
+            familyMembers.map((m) => (
+              <View key={m.id} style={styles.familyCard}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.familyName}>{m.name} ({m.relationship})</Text>
+                    {canManage && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          Alert.alert('Delete', 'Delete this family member?', [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Delete', style: 'destructive', onPress: async () => {
+                              try {
+                                const base = require('../api/apiBase').getApiBase();
+                                const res = await require('../api/client').authFetch(`${base}/patients/${patient.id}/family/${m.id}`, { method: 'DELETE' });
+                                if (res.ok) {
+                                  setFamilyMembers(prev => prev.filter(item => item.id !== m.id));
+                                }
+                              } catch (ex) { Alert.alert('Error', ex.message); }
+                            }}
+                          ]);
+                        }}
+                      >
+                        <Text style={{ color: colors.error, fontSize: 13 }}>🗑️</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <Text style={styles.familyDetails}>Age: {m.age || '-'} | Gender: {m.gender || '-'} {m.phone ? `| Phone: ${m.phone}` : ''}</Text>
+                  {m.medicalHistory ? <Text style={styles.familyMedical}>History: {m.medicalHistory}</Text> : null}
+                </View>
+              </View>
+            ))
+          )}
         </Section>
 
         <Section title="Emergency Contact">
@@ -260,6 +356,64 @@ export default function PatientDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Add Family Member Modal */}
+      <Modal animationType="slide" transparent={true} visible={familyModalVisible} onRequestClose={() => setFamilyModalVisible(false)}>
+        <View style={styles.modalBg}>
+          <ScrollView contentContainerStyle={styles.modalScroll}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Add Family Member</Text>
+
+              <Text style={styles.fieldLabel}>Name *</Text>
+              <TextInput style={styles.modalInput} value={famName} onChangeText={setFamName} placeholder="Name" placeholderTextColor={colors.textMuted} />
+
+              <Text style={styles.fieldLabel}>Relationship</Text>
+              <View style={styles.selectorRow}>
+                {['Spouse', 'Child', 'Parent', 'Sibling', 'Other'].map((r) => (
+                  <TouchableOpacity
+                    key={r}
+                    style={[styles.selectorBtn, famRelationship === r && styles.selectorBtnActive]}
+                    onPress={() => setFamRelationship(r)}
+                  >
+                    <Text style={[styles.selectorBtnText, famRelationship === r && styles.selectorBtnTextActive]}>{r}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>Age</Text>
+              <TextInput style={styles.modalInput} value={famAge} keyboardType="numeric" onChangeText={setFamAge} placeholder="Age" placeholderTextColor={colors.textMuted} />
+
+              <Text style={styles.fieldLabel}>Gender</Text>
+              <View style={styles.selectorRow}>
+                {['Male', 'Female', 'Other'].map((g) => (
+                  <TouchableOpacity
+                    key={g}
+                    style={[styles.selectorBtn, famGender === g && styles.selectorBtnActive]}
+                    onPress={() => setFamGender(g)}
+                  >
+                    <Text style={[styles.selectorBtnText, famGender === g && styles.selectorBtnTextActive]}>{g}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>Phone</Text>
+              <TextInput style={styles.modalInput} value={famPhone} keyboardType="phone-pad" onChangeText={setFamPhone} placeholder="Phone number" placeholderTextColor={colors.textMuted} />
+
+              <Text style={styles.fieldLabel}>Medical History / Notes</Text>
+              <TextInput style={[styles.modalInput, { minHeight: 60 }]} value={famHistory} onChangeText={setFamHistory} placeholder="e.g. Diabetes, Hypertension, allergies..." placeholderTextColor={colors.textMuted} multiline />
+
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setFamilyModalVisible(false)}>
+                  <Text style={styles.cancelModalBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.saveModalBtn} onPress={handleAddFamilyMember}>
+                  <Text style={styles.saveModalBtnText}>Add</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -325,4 +479,47 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.primary + '20', gap: 4,
   },
   rxBtnText: { fontSize: 11, fontWeight: '700', color: colors.primary },
+  
+  // Family Styles
+  addFamilyInlineBtn: { backgroundColor: colors.primary + '15', borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, alignSelf: 'flex-end', marginBottom: 8 },
+  addFamilyInlineText: { fontSize: 11, fontWeight: '700', color: colors.primary },
+  familyCard: { backgroundColor: colors.bg, borderRadius: 8, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: colors.borderLight },
+  familyName: { fontSize: 14, fontWeight: '800', color: colors.text },
+  familyDetails: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  familyMedical: { fontSize: 11, color: colors.textMuted, fontStyle: 'italic', marginTop: 4 },
+  
+  // Modal styles
+  modalBg: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(11, 26, 43, 0.5)', padding: 16 },
+  modalScroll: { flexGrow: 1, justifyContent: 'center', width: '100%' },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: 20,
+    width: '100%',
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 12, textAlign: 'center' },
+  fieldLabel: { fontSize: 11, fontWeight: '750', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, marginTop: 10 },
+  modalInput: {
+    backgroundColor: colors.bg,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  selectorRow: { flexDirection: 'row', gap: 6, marginVertical: 4, flexWrap: 'wrap' },
+  selectorBtn: { flex: 1, minWidth: '22%', paddingVertical: 8, borderRadius: borderRadius.sm, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
+  selectorBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  selectorBtnText: { fontSize: 11, fontWeight: '750', color: colors.textSecondary },
+  selectorBtnTextActive: { color: '#FFFFFF' },
+  modalButtonRow: { flexDirection: 'row', gap: 10, marginTop: 24 },
+  cancelModalBtn: { flex: 1, paddingVertical: 12, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
+  cancelModalBtnText: { fontSize: 13, fontWeight: '750', color: colors.textSecondary },
+  saveModalBtn: { flex: 1, paddingVertical: 12, borderRadius: borderRadius.md, backgroundColor: colors.primary, alignItems: 'center' },
+  saveModalBtnText: { fontSize: 13, fontWeight: '750', color: '#FFFFFF' }
 });

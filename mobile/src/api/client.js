@@ -1,6 +1,7 @@
 export const FETCH_TIMEOUT = 10000;
 
 let authToken = null;
+let unauthorizedCallback = null;
 
 export function setToken(token) {
   authToken = token;
@@ -12,6 +13,10 @@ export function getToken() {
 
 export function clearToken() {
   authToken = null;
+}
+
+export function setUnauthorizedCallback(cb) {
+  unauthorizedCallback = cb;
 }
 
 export async function authFetch(url, options = {}) {
@@ -28,6 +33,9 @@ export async function authFetch(url, options = {}) {
     clearTimeout(timeoutId);
     if (res.status === 401) {
       clearToken();
+      if (unauthorizedCallback) {
+        unauthorizedCallback();
+      }
     }
     return res;
   } catch (err) {

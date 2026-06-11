@@ -30,6 +30,8 @@ public class PatientResponse {
     private String createdByName;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
+    private String tempUsername;
+    private String tempPassword;
 
     // Backward compatibility fields for old mobile app
     public String getFirstName() {

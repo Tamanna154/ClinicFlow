@@ -114,6 +114,7 @@ public class UserController {
 
     private AuthResponse toAuthResponse(String token, User user) {
         List<String> permissions = List.of();
+        String roleTitle = null;
 
         if (user.getRole() == User.Role.DOCTOR) {
             permissions = Arrays.stream(Permission.values())
@@ -121,6 +122,12 @@ public class UserController {
                     .toList();
         } else if (user.getRole() == User.Role.RECEPTIONIST) {
             permissions = doctorStaffService.getPermissionsForUser(user.getId());
+            roleTitle = doctorStaffService.getRoleTitleForUser(user.getId());
+        } else if (user.getRole() == User.Role.CLINIC_ADMIN || user.getRole() == User.Role.SUPER_ADMIN) {
+            permissions = Arrays.stream(Permission.values())
+                    .map(Enum::name)
+                    .toList();
+            roleTitle = user.getRole() == User.Role.CLINIC_ADMIN ? "Clinic Admin" : "Super Admin";
         }
 
         return AuthResponse.builder()
@@ -131,6 +138,9 @@ public class UserController {
                 .role(user.getRole().name())
                 .doctorId(user.getDoctorId())
                 .patientId(user.getPatientId())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .roleTitle(roleTitle)
                 .permissions(permissions)
                 .build();
     }

@@ -43,20 +43,35 @@ export default function LetterheadSetupScreen({ navigation }) {
     try {
       const data = await letterheadApi.get(doctorId);
       setForm({
-        clinicName: data.clinicName || '',
+        clinicName: data.clinicName || user?.name || '',
         clinicAddress: data.clinicAddress || '',
-        clinicPhone: data.clinicPhone || '',
-        clinicEmail: data.clinicEmail || '',
+        clinicPhone: data.clinicPhone || user?.phone || '',
+        clinicEmail: data.clinicEmail || user?.email || '',
         gstNumber: data.gstNumber || '',
-        registrationNumber: data.registrationNumber || '',
-        useSystemGenerated: data.useSystemGenerated || false,
+        registrationNumber: data.registrationNumber || user?.registrationNumber || '',
+        useSystemGenerated: data.useSystemGenerated || true,
         templateStyle: data.templateStyle || 'TEMPLATE_A',
       });
       setLogoUrl(data.clinicLogoUrl);
       setSignatureUrl(data.signatureUrl);
       setDesignUrl(data.letterheadDesignUrl);
     } catch (e) {
-      // No existing letterhead – start fresh
+      // No existing letterhead – auto-fill from doctor profile
+      try {
+        const base = require('../api/apiBase').getApiBase();
+        const { authFetch } = require('../api/client');
+        const res = await authFetch(`${base}/doctors/${doctorId}`);
+        if (res.ok) {
+          const doc = await res.json();
+          setForm(prev => ({
+            ...prev,
+            clinicName: doc.name || user?.name || '',
+            clinicPhone: doc.phone || user?.phone || '',
+            clinicEmail: doc.email || user?.email || '',
+            registrationNumber: doc.qualifications || '',
+          }));
+        }
+      } catch (ex) {}
     } finally {
       setLoading(false);
     }
@@ -340,7 +355,7 @@ export default function LetterheadSetupScreen({ navigation }) {
                         ) : (
                           <View style={styles.a4LogoPlaceholder}>
                             <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFF' }}>
-                              {form.clinicName ? form.clinicName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 3) : 'CF'}
+                              {form.clinicName ? form.clinicName.split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 3) : 'CF'}
                             </Text>
                           </View>
                         )}

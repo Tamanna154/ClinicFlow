@@ -65,5 +65,6 @@ public class DoctorDashboardResponse {
         private String status;
         private Boolean isOnline;
         private String consultationStatus;
+        private String appointmentType;
     }
 }

@@ -16,6 +16,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final com.Clinc_Flow.Clinic.doctor.DoctorRepository doctorRepository;
+    private final com.Clinc_Flow.Clinic.patient.PatientRepository patientRepository;
 
     @Transactional
     public User login(String username, String password) {
@@ -31,6 +32,25 @@ public class UserService {
                 userRepository.save(user);
                 log.info("Auto-linked doctor user {} to doctor profile ID {}", user.getUsername(), d.getId());
             });
+        }
+        if (user.getRole() == User.Role.PATIENT && user.getPatientId() == null) {
+            String emailToSearch = user.getEmail() != null ? user.getEmail() : username;
+            com.Clinc_Flow.Clinic.patient.Patient patient = null;
+            if (emailToSearch != null && !emailToSearch.isBlank()) {
+                patient = patientRepository.findByEmail(emailToSearch).orElse(null);
+            }
+            if (patient == null) {
+                patient = com.Clinc_Flow.Clinic.patient.Patient.builder()
+                        .name(user.getName())
+                        .email(user.getEmail())
+                        .phone(user.getPhone() != null ? user.getPhone() : "")
+                        .archived(false)
+                        .build();
+                patient = patientRepository.save(patient);
+            }
+            user.setPatientId(patient.getId());
+            userRepository.save(user);
+            log.info("Auto-linked patient user {} to patient profile ID {}", user.getUsername(), patient.getId());
         }
         return user;
     }
@@ -51,6 +71,25 @@ public class UserService {
         if (userRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Username already taken");
         }
+        
+        Long patientId = null;
+        if (role == User.Role.PATIENT) {
+            com.Clinc_Flow.Clinic.patient.Patient patient = null;
+            if (email != null && !email.isBlank()) {
+                patient = patientRepository.findByEmail(email).orElse(null);
+            }
+            if (patient == null) {
+                patient = com.Clinc_Flow.Clinic.patient.Patient.builder()
+                        .name(name)
+                        .email(email)
+                        .phone(phone != null ? phone : "")
+                        .archived(false)
+                        .build();
+                patient = patientRepository.save(patient);
+            }
+            patientId = patient.getId();
+        }
+
         User user = User.builder()
                 .name(name)
                 .username(username)
@@ -58,6 +97,7 @@ public class UserService {
                 .role(role)
                 .email(email)
                 .phone(phone)
+                .patientId(patientId)
                 .build();
         return userRepository.save(user);
     }

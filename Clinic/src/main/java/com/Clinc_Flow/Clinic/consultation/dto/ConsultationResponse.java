@@ -23,6 +23,7 @@ public class ConsultationResponse {
     private String diagnosis;
     private String doctorNotes;
     private String bloodPressure;
+    private String bloodSugar;
     private Integer pulseRate;
     private BigDecimal weight;
     private BigDecimal height;
@@ -79,6 +80,7 @@ public class ConsultationResponse {
                 .diagnosis(consultation.getDiagnosis())
                 .doctorNotes(consultation.getDoctorNotes())
                 .bloodPressure(consultation.getBloodPressure())
+                .bloodSugar(consultation.getBloodSugar())
                 .pulseRate(consultation.getPulseRate())
                 .weight(consultation.getWeight())
                 .height(consultation.getHeight())

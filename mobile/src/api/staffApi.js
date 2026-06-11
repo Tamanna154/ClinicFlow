@@ -52,6 +52,21 @@ export const staffApi = {
     if (!res.ok) throw new Error('Failed to remove staff');
   },
 
+  async update(staffId, details) {
+    const apiBase = await getApiBase();
+    const res = await authFetch(`${apiBase}/staff/${staffId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(details),
+    });
+    if (!res.ok) {
+      let msg = 'Failed to update staff';
+      try { const err = await res.json(); msg = err.error || msg; } catch (e) {}
+      throw new Error(msg);
+    }
+    return res.json();
+  },
+
   async getPermissions(staffId) {
     const apiBase = await getApiBase();
     const res = await authFetch(`${apiBase}/staff/${staffId}/permissions`);

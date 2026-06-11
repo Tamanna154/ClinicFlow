@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { clearToken } from '../api/client';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { Alert } from 'react-native';
+import { clearToken, setUnauthorizedCallback } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -13,6 +14,19 @@ export function AuthProvider({ children }) {
     clearToken();
   }, []);
 
+  useEffect(() => {
+    setUnauthorizedCallback(() => {
+      logout();
+      Alert.alert(
+        'Session Expired',
+        'Your session has expired or is invalid. Please sign in again.'
+      );
+    });
+    return () => {
+      setUnauthorizedCallback(null);
+    };
+  }, [logout]);
+
   return (
     <AuthContext.Provider value={{ user, setUser, token, setToken, logout }}>
       {children}
@@ -25,3 +39,4 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be inside AuthProvider');
   return ctx;
 }
+

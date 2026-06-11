@@ -33,6 +33,9 @@ public class Expense {
     @Column(name = "created_by")
     private Long createdBy;
 
+    @Column(name = "bill_image_path", columnDefinition = "TEXT")
+    private String billImagePath;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 

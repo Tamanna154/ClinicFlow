@@ -12,23 +12,59 @@ export default function ServerSettingsScreen({ navigation }) {
 
   useEffect(() => {
     (async () => {
-      await initializeApiBase();
-      setUrl(getApiBase());
-      setLoading(false);
+      try {
+        await initializeApiBase();
+      } catch (err) {
+        console.warn('initializeApiBase failed in ServerSettingsScreen:', err);
+      } finally {
+        setUrl(getApiBase());
+        setLoading(false);
+      }
     })();
   }, []);
 
+  const sanitizeUrl = (input) => {
+    if (!input) return '';
+    let clean = input.trim();
+    // Prepend http:// if no protocol is specified
+    if (!/^https?:\/\//i.test(clean)) {
+      clean = 'http://' + clean;
+    }
+    // Replace IP.port with IP:port (e.g. 10.0.2.2.8080 -> 10.0.2.2:8080)
+    clean = clean.replace(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\.(\d+)/, '$1:$2');
+    // Replace localhost.port with localhost:port (e.g. localhost.8080 -> localhost:8080)
+    clean = clean.replace(/(localhost)\.(\d+)/i, '$1:$2');
+    // Trim trailing slashes
+    clean = clean.replace(/\/+$/, '');
+    return clean;
+  };
+
   const handleSave = async () => {
-    const trimmed = url.trim().replace(/\/+$/, '');
-    if (!trimmed) {
+    const cleanUrl = sanitizeUrl(url);
+    setUrl(cleanUrl);
+    if (!cleanUrl) {
       Alert.alert('Error', 'Server URL is required');
       return;
     }
     setSaving(true);
     try {
-      await setApiBase(trimmed);
-      Alert.alert('Saved', 'Server URL updated. Go back and try logging in.');
-      navigation.goBack();
+      await setApiBase(cleanUrl);
+      Alert.alert(
+        'Saved',
+        'Server URL updated. Go back and try logging in.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Login');
+              }
+            }
+          }
+        ]
+      );
     } catch (e) {
       Alert.alert('Error', e.message);
     } finally {
@@ -39,18 +75,19 @@ export default function ServerSettingsScreen({ navigation }) {
   const [testing, setTesting] = useState(false);
 
   const handleTest = async () => {
-    const testUrl = url.trim().replace(/\/+$/, '');
+    const cleanUrl = sanitizeUrl(url);
+    setUrl(cleanUrl);
     setTesting(true);
     try {
-      const result = await quickProbe(testUrl);
+      const result = await quickProbe(cleanUrl);
       if (result.ok) {
-        Alert.alert('Connected', `✓ Server reachable at ${testUrl} (HTTP ${result.status})\n\nSave and try logging in.`);
+        Alert.alert('Connected', `✓ Server reachable at ${cleanUrl} (HTTP ${result.status})\n\nSave and try logging in.`);
       } else if (result.status === 0) {
-        const knownIps = ['10.151.137.83', '10.0.2.2', '192.168.0.101', '192.168.1.101', '192.168.1.100'];
+        const knownIps = ['192.168.1.100', '192.168.1.101', '192.168.0.100', '192.168.0.101', '192.168.29.100', '10.0.2.2', '10.151.137.83', '10.151.137.1', 'localhost'];
         const suggestions = knownIps.map(ip => `http://${ip}:8080/api`).join('\n');
-        Alert.alert('Connection Failed', `${testUrl} is not reachable.\n\nTry pasting one of these URLs:\n${suggestions}\n\nAlso: verify backend is running and firewall allows port 8080.`);
+        Alert.alert('Connection Failed', `${cleanUrl} is not reachable.\n\nTry pasting one of these URLs:\n${suggestions}\n\nAlso: verify backend is running and firewall allows port 8080.`);
       } else {
-        Alert.alert('Wrong Endpoint', `Server at ${testUrl} responded with HTTP ${result.status}, but the API endpoint was not found.\n\nMake sure the URL includes /api (e.g. http://10.0.2.2:8080/api)`);
+        Alert.alert('Wrong Endpoint', `Server at ${cleanUrl} responded with HTTP ${result.status}, but the API endpoint was not found.\n\nMake sure the URL includes /api (e.g. http://10.0.2.2:8080/api)`);
       }
     } catch (e) {
       Alert.alert('Error', e.message);

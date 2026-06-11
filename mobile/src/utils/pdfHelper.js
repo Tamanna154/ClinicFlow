@@ -107,7 +107,7 @@ export function getPrescriptionHtml(consultation, patientName, letterhead) {
   const contactLine = contactParts.length ? contactParts.join(' | ') : '';
   const regInfo = [lh.gstNumber ? `GST: ${lh.gstNumber}` : '', lh.registrationNumber ? `Reg: ${lh.registrationNumber}` : ''].filter(Boolean).join(' | ');
 
-  const clinicInitials = clinicName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 3);
+  const clinicInitials = clinicName.split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 3);
   const logoHtml = lh.clinicLogoUrl
     ? `<img src="${lh.clinicLogoUrl}" style="max-height:50px; max-width:200px; margin-bottom:6px;" />`
     : `<div style="display: inline-block; width: 44px; height: 44px; line-height: 44px; border-radius: 22px; background: #1e3a8a; color: #ffffff; font-weight: 800; font-size: 16px; margin-bottom: 6px; text-align: center; letter-spacing: 0.5px;">${clinicInitials}</div>`;
@@ -231,11 +231,12 @@ export function getPrescriptionHtml(consultation, patientName, letterhead) {
     </table>` : `
     <div class="notes">${consultation.doctorNotes || 'No prescription recorded.'}</div>`}
   </div>
-  ${consultation.bloodPressure || consultation.pulseRate || consultation.weight || consultation.temperature || consultation.oxygenLevel ? `
+  ${consultation.bloodPressure || consultation.bloodSugar || consultation.pulseRate || consultation.weight || consultation.temperature || consultation.oxygenLevel ? `
   <div class="section">
     <div class="section-title">Vitals</div>
     <div class="vitals-grid">
       ${consultation.bloodPressure ? `<div class="vital-item"><span class="vital-label">BP: </span><span class="vital-value">${consultation.bloodPressure} mmHg</span></div>` : ''}
+      ${consultation.bloodSugar ? `<div class="vital-item"><span class="vital-label">Sugar: </span><span class="vital-value">${consultation.bloodSugar} mg/dL</span></div>` : ''}
       ${consultation.pulseRate ? `<div class="vital-item"><span class="vital-label">Pulse: </span><span class="vital-value">${consultation.pulseRate} bpm</span></div>` : ''}
       ${consultation.weight ? `<div class="vital-item"><span class="vital-label">Weight: </span><span class="vital-value">${consultation.weight} kg</span></div>` : ''}
       ${consultation.temperature ? `<div class="vital-item"><span class="vital-label">Temp: </span><span class="vital-value">${consultation.temperature} °F</span></div>` : ''}

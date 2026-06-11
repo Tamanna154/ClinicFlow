@@ -16,6 +16,7 @@ public class ConsultationRequest {
     private String doctorNotes;
 
     private String bloodPressure;
+    private String bloodSugar;
     private Integer pulseRate;
     private BigDecimal weight;
     private BigDecimal height;

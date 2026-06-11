@@ -78,8 +78,8 @@ export default function InventoryDashboardScreen({ navigation }) {
   const healthyCount = Math.max(totalItems - lowStock.length, 0);
 
   const stockTypeData = [
-    { name: 'Internal', population: Math.max(internalCount, 1), color: colors.info, legendFontColor: colors.textSecondary, legendFontSize: 12 },
-    { name: 'External', population: Math.max(externalCount, 1), color: colors.accent, legendFontColor: colors.textSecondary, legendFontSize: 12 },
+    { name: 'In-House', population: Math.max(internalCount, 1), color: colors.info, legendFontColor: colors.textSecondary, legendFontSize: 12 },
+    { name: 'Store', population: Math.max(externalCount, 1), color: colors.accent, legendFontColor: colors.textSecondary, legendFontSize: 12 },
   ];
 
   const stockHealthData = {
@@ -92,6 +92,14 @@ export default function InventoryDashboardScreen({ navigation }) {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchData(true)} tintColor={colors.primary} colors={[colors.primary]} />}
     >
       <Text style={styles.pageTitle}>Inventory Overview</Text>
+
+      {(lowStock.length > 0 || expiryAlerts.length > 0) && (
+        <View style={styles.topWarningBanner}>
+          <Text style={styles.topWarningText}>
+            ⚠️ Attention: There are {lowStock.length} low-stock items and {expiryAlerts.length} items near expiry. Please review details below.
+          </Text>
+        </View>
+      )}
 
       <View style={styles.summaryGrid}>
         <SummaryCard label="Total Items" value={totalItems || '-'} color={colors.primary} />
@@ -199,6 +207,9 @@ export default function InventoryDashboardScreen({ navigation }) {
         <TouchableOpacity style={[styles.quickBtn, styles.quickBtnSecondary]} onPress={() => navigation.navigate('InventoryForm', {})} activeOpacity={0.7}>
           <Text style={[styles.quickBtnText, styles.quickBtnSecondaryText]}>Add New Item</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={[styles.quickBtn, styles.quickBtnSecondary]} onPress={() => navigation.navigate('SupplierList')} activeOpacity={0.7}>
+          <Text style={[styles.quickBtnText, styles.quickBtnSecondaryText]}>Manage Suppliers</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -240,4 +251,6 @@ const styles = StyleSheet.create({
   quickBtnSecondary: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   quickBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   quickBtnSecondaryText: { color: colors.primary },
+  topWarningBanner: { backgroundColor: '#FFFBEB', borderColor: '#F59E0B', borderWidth: 1, borderRadius: borderRadius.md, padding: 12, marginBottom: 16 },
+  topWarningText: { fontSize: 13, color: '#D97706', fontWeight: '750', lineHeight: 18 },
 });
