@@ -29,6 +29,9 @@ public class DoctorResponse {
     private String clinicName;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
+    
+    private String tempUsername;
+    private String tempPassword;
 
     private static List<AchievementDto> mapAchievements(String json) {
         if (json == null || json.trim().isEmpty()) return List.of();

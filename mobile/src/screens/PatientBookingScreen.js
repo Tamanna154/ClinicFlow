@@ -8,14 +8,18 @@ import { doctorApi } from '../api/doctorApi';
 import { appointmentApi } from '../api/appointmentApi';
 import { scheduleApi } from '../api/scheduleApi';
 import { colors, borderRadius, shadows, typography } from '../theme';
+import { DatePickerModal } from '../components/DateTimePickerModal';
+import { useEffect } from 'react';
 
 const STEPS = ['Doctor', 'Date & Time', 'Confirm'];
 
-export default function PatientBookingScreen({ navigation }) {
+export default function PatientBookingScreen({ route, navigation }) {
   const [doctors, setDoctors] = useState([]);
   const [loadingDoctors, setLoadingDoctors] = useState(true);
   const [step, setStep] = useState(0);
-  const [doctorId, setDoctorId] = useState('');
+  const [doctorId, setDoctorId] = useState(
+    route?.params?.preselectedDoctorId ? String(route.params.preselectedDoctorId) : ''
+  );
   const [appointmentDate, setAppointmentDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -23,19 +27,30 @@ export default function PatientBookingScreen({ navigation }) {
   const [slots, setSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [isEmergency, setIsEmergency] = useState(false);
+
+  useEffect(() => {
+    if (step === 1 && doctorId && appointmentDate) {
+      fetchSlots();
+    }
+  }, [appointmentDate, doctorId, step]);
 
   useFocusEffect(useCallback(() => {
     (async () => {
       try {
         const d = await doctorApi.getActive();
         setDoctors(d);
+        if (route?.params?.preselectedDoctorId) {
+          setDoctorId(String(route.params.preselectedDoctorId));
+        }
       } catch (e) {
         Alert.alert('Error', 'Failed to load doctors.');
       } finally {
         setLoadingDoctors(false);
       }
     })();
-  }, []));
+  }, [route?.params?.preselectedDoctorId]));
 
   const fetchSlots = async () => {
     if (!doctorId || !appointmentDate.trim()) return;
@@ -152,11 +167,16 @@ export default function PatientBookingScreen({ navigation }) {
         appointmentDate.trim(),
         startTime + ':00',
         endTime + ':00',
-        reason.trim() || null
+        reason.trim() || null,
+        isEmergency ? 'EMERGENCY' : 'IN_PERSON'
       );
-      Alert.alert('Appointment booked!', 'Your appointment has been confirmed.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      const doc = doctors.find(d => String(d.id) === doctorId);
+      const docName = doc ? `Dr. ${doc.name}` : 'the doctor';
+      Alert.alert(
+        '✅ Appointment Booked!',
+        `━━━━━━━━━━━━━━━━━━━━━━\n  APPOINTMENT CONFIRMED\n━━━━━━━━━━━━━━━━━━━━━━\n\n  🩺 Doctor: ${docName}\n  📅 Date: ${appointmentDate}\n  ⏰ Time: ${startTime} - ${endTime}\n  📌 Status: ${isEmergency ? '🚨 Emergency' : 'Scheduled'}\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n  Your appointment has been booked successfully.\n  You will receive a reminder before the visit.`,
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
     } catch (err) {
       Alert.alert('Booking Failed', err.message);
     } finally {
@@ -220,17 +240,15 @@ export default function PatientBookingScreen({ navigation }) {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Select Date & Time</Text>
             <Text style={styles.fLabel}>Date (YYYY-MM-DD)</Text>
-            <TextInput
-              style={styles.input}
-              value={appointmentDate}
-              onChangeText={(v) => {
-                setAppointmentDate(v);
-                setStartTime('');
-                setEndTime('');
-              }}
-              placeholder="e.g. 2025-12-25"
-              placeholderTextColor={colors.textMuted}
-            />
+            <TouchableOpacity 
+              style={[styles.input, { justifyContent: 'center', height: 42 }]} 
+              onPress={() => setDatePickerVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: appointmentDate ? colors.text : colors.textMuted, fontSize: 14, fontWeight: '500' }}>
+                {appointmentDate || 'Select Appointment Date'}
+              </Text>
+            </TouchableOpacity>
 
             {doctorId && appointmentDate ? (
               loadingSlots ? (
@@ -309,6 +327,17 @@ export default function PatientBookingScreen({ navigation }) {
         {step === 2 && (
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Confirm Booking</Text>
+
+            <TouchableOpacity
+              style={[styles.emergencyToggle, isEmergency && styles.emergencyToggleActive]}
+              onPress={() => setIsEmergency(!isEmergency)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.emergencyToggleText, isEmergency && styles.emergencyToggleTextActive]}>
+                {isEmergency ? '🚨 Emergency Appointment' : 'Mark as Emergency?'}
+              </Text>
+            </TouchableOpacity>
+
             <View style={styles.confirmRow}>
               <Text style={styles.confirmLabel}>Doctor</Text>
               <Text style={styles.confirmValue}>Dr. {doctors.find((d) => String(d.id) === doctorId)?.name}</Text>
@@ -347,6 +376,18 @@ export default function PatientBookingScreen({ navigation }) {
           </View>
         )}
       </ScrollView>
+
+      <DatePickerModal
+        visible={datePickerVisible}
+        onClose={() => setDatePickerVisible(false)}
+        onSelect={(date) => {
+          setAppointmentDate(date);
+          setStartTime('');
+          setEndTime('');
+        }}
+        value={appointmentDate}
+        minDate={new Date().toISOString().split('T')[0]}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -397,6 +438,13 @@ const styles = StyleSheet.create({
   nextBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   confirmBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 14, alignItems: 'center' },
   confirmBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  emergencyToggle: {
+    backgroundColor: colors.warning + '15', borderRadius: borderRadius.md, paddingVertical: 12, paddingHorizontal: 16,
+    marginBottom: 14, borderWidth: 1.5, borderColor: colors.warning + '40', alignItems: 'center',
+  },
+  emergencyToggleActive: { backgroundColor: colors.error + '15', borderColor: colors.error },
+  emergencyToggleText: { fontSize: 13, fontWeight: '700', color: colors.warning },
+  emergencyToggleTextActive: { color: colors.error },
   confirmRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   confirmLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
   confirmValue: { fontSize: 13, color: colors.text, fontWeight: '700', maxWidth: '60%', textAlign: 'right' },

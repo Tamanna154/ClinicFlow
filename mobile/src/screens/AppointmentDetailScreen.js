@@ -208,8 +208,10 @@ export default function AppointmentDetailScreen({ route, navigation }) {
           {reminders.length > 0 ? (
             reminders.map((r) => (
               <View key={r.id} style={styles.reminderRow}>
-                <Text style={styles.reminderTime}>{r.hoursBefore}h before</Text>
-                <Text style={styles.reminderStatus}>{r.sent ? 'Sent' : 'Pending'}</Text>
+                <Text style={styles.reminderTime}>
+                  {r.hoursBefore === 0.25 ? '15 min before' : `${r.hoursBefore}h before`}
+                </Text>
+                <Text style={styles.reminderStatus}>{r.sent ? 'Sent ✓' : 'Pending'}</Text>
               </View>
             ))
           ) : (
@@ -217,11 +219,13 @@ export default function AppointmentDetailScreen({ route, navigation }) {
           )}
           {!reminderLoading ? (
             <View style={styles.reminderBtns}>
-              <TouchableOpacity style={styles.reminderBtn} onPress={() => handleCreateReminder(24)} activeOpacity={0.7}>
-                <Text style={styles.reminderBtnText}>24h before</Text>
+              <TouchableOpacity style={styles.reminderBtn} onPress={() => handleCreateReminder(0.25)} activeOpacity={0.7}>
+                <Text style={styles.reminderBtnText}>🔔 15 min before</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.reminderBtn} onPress={() => handleCreateReminder(2)} activeOpacity={0.7}>
-                <Text style={styles.reminderBtnText}>2h before</Text>
+              <TouchableOpacity style={[styles.reminderBtn, { backgroundColor: colors.success + '15', borderColor: colors.success + '30' }]} onPress={() => {
+                Alert.alert('Calendar Sync', 'Google Calendar sync is enabled in Doctor Settings.\n\nWhen enabled, appointments are auto-created as calendar events. Go to Doctor Detail → Google Calendar Sync to check.');
+              }} activeOpacity={0.7}>
+                <Text style={[styles.reminderBtnText, { color: colors.success }]}>📅 Check Sync</Text>
               </TouchableOpacity>
             </View>
           ) : (

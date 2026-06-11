@@ -61,7 +61,15 @@ export default function PatientRegisterScreen({ navigation }) {
     try {
       const p = cleanPhone();
       const data = await register(name.trim(), username.trim(), password, p, email.trim());
-      const user = { id: data.id, name: data.name, username: data.username, role: 'PATIENT', patientId: data.patientId };
+      const user = { 
+        id: data.id, 
+        name: data.name, 
+        username: data.username, 
+        role: 'PATIENT', 
+        patientId: data.patientId,
+        email: data.email || email.trim(),
+        phone: data.phone || p
+      };
       setUser(user);
       setToken(data.token);
       setApiToken(data.token);

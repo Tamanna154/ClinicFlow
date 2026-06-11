@@ -14,6 +14,7 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     List<Patient> findByNameContainingIgnoreCase(String name);
 
     List<Patient> findByPhoneContaining(String phone);
+    java.util.Optional<Patient> findByEmail(String email);
 
     List<Patient> findByArchived(Boolean archived);
 

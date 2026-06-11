@@ -10,6 +10,7 @@ import { appointmentApi } from '../api/appointmentApi';
 import { smsApi } from '../api/smsApi';
 import { scheduleApi } from '../api/scheduleApi';
 import { colors, borderRadius, shadows, typography } from '../theme';
+import { DatePickerModal, TimePickerModal } from '../components/DateTimePickerModal';
 
 const STATUS_OPTS = ['SCHEDULED', 'CONFIRMED'];
 
@@ -34,6 +35,9 @@ export default function AppointmentBookingScreen({ route, navigation }) {
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [startTimePickerVisible, setStartTimePickerVisible] = useState(false);
+  const [endTimePickerVisible, setEndTimePickerVisible] = useState(false);
 
   useFocusEffect(useCallback(() => {
     (async () => {
@@ -148,7 +152,15 @@ export default function AppointmentBookingScreen({ route, navigation }) {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Date & Time</Text>
           <Field label="Date (YYYY-MM-DD)" required error={errors.appointmentDate}>
-            <TextInput style={[styles.input, errors.appointmentDate && styles.inputError]} value={form.appointmentDate} onChangeText={(v) => setForm({ ...form, appointmentDate: v, startTime: '', endTime: '' })} placeholder="e.g. 2025-12-25" placeholderTextColor={colors.textMuted} />
+            <TouchableOpacity 
+              style={[styles.input, errors.appointmentDate && styles.inputError, { justifyContent: 'center', height: 42 }]} 
+              onPress={() => setDatePickerVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: form.appointmentDate ? colors.text : colors.textMuted, fontSize: 14, fontWeight: '500' }}>
+                {form.appointmentDate || 'Select Appointment Date'}
+              </Text>
+            </TouchableOpacity>
           </Field>
 
           {/* Availability Panel */}
@@ -190,10 +202,26 @@ export default function AppointmentBookingScreen({ route, navigation }) {
 
           <View style={styles.timeRow}>
             <Field label="Start" style={{ flex:1, marginRight:6 }} required error={errors.startTime}>
-              <TextInput style={[styles.input, errors.startTime && styles.inputError]} value={form.startTime} onChangeText={(v) => setForm({ ...form, startTime: v })} placeholder="HH:MM" placeholderTextColor={colors.textMuted} />
+              <TouchableOpacity 
+                style={[styles.input, errors.startTime && styles.inputError, { justifyContent: 'center', height: 42 }]} 
+                onPress={() => setStartTimePickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: form.startTime ? colors.text : colors.textMuted, fontSize: 14, fontWeight: '500' }}>
+                  {form.startTime || 'Select'}
+                </Text>
+              </TouchableOpacity>
             </Field>
             <Field label="End" style={{ flex:1, marginLeft:6 }} required error={errors.endTime}>
-              <TextInput style={[styles.input, errors.endTime && styles.inputError]} value={form.endTime} onChangeText={(v) => setForm({ ...form, endTime: v })} placeholder="HH:MM" placeholderTextColor={colors.textMuted} />
+              <TouchableOpacity 
+                style={[styles.input, errors.endTime && styles.inputError, { justifyContent: 'center', height: 42 }]} 
+                onPress={() => setEndTimePickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: form.endTime ? colors.text : colors.textMuted, fontSize: 14, fontWeight: '500' }}>
+                  {form.endTime || 'Select'}
+                </Text>
+              </TouchableOpacity>
             </Field>
           </View>
         </View>
@@ -250,6 +278,26 @@ export default function AppointmentBookingScreen({ route, navigation }) {
           {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.bookBtnText}>Book Appointment</Text>}
         </TouchableOpacity>
       </ScrollView>
+
+      <DatePickerModal
+        visible={datePickerVisible}
+        onClose={() => setDatePickerVisible(false)}
+        onSelect={(date) => setForm({ ...form, appointmentDate: date, startTime: '', endTime: '' })}
+        value={form.appointmentDate}
+        minDate={new Date().toISOString().split('T')[0]}
+      />
+      <TimePickerModal
+        visible={startTimePickerVisible}
+        onClose={() => setStartTimePickerVisible(false)}
+        onSelect={(time) => setForm({ ...form, startTime: time })}
+        value={form.startTime}
+      />
+      <TimePickerModal
+        visible={endTimePickerVisible}
+        onClose={() => setEndTimePickerVisible(false)}
+        onSelect={(time) => setForm({ ...form, endTime: time })}
+        value={form.endTime}
+      />
     </KeyboardAvoidingView>
   );
 }

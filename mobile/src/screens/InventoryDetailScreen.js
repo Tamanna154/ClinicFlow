@@ -117,7 +117,7 @@ export default function InventoryDetailScreen({ route, navigation }) {
         <View style={styles.badgeRow}>
           <View style={[styles.badge, { backgroundColor: b.bg }]}><Text style={[styles.badgeText, { color: b.text }]}>{b.label}</Text></View>
           <View style={[styles.typeBadge, { backgroundColor: item.stockType === 'INTERNAL' ? '#EDF7FA' : '#FFF0ED' }]}>
-            <Text style={{ fontSize: 11, fontWeight: '700', color: item.stockType === 'INTERNAL' ? colors.primary : colors.accent }}>{item.stockType}</Text>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: item.stockType === 'INTERNAL' ? colors.primary : colors.accent }}>{item.stockType === 'INTERNAL' ? 'In-House' : 'Store'}</Text>
           </View>
         </View>
       </View>

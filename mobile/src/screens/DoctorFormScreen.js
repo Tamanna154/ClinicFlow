@@ -4,7 +4,6 @@ import {
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { doctorApi } from '../api/doctorApi';
-import { clinicApi } from '../api/clinicApi';
 import { compensationApi } from '../api/compensationApi';
 import { colors, borderRadius, shadows, typography } from '../theme';
 
@@ -17,16 +16,13 @@ export default function DoctorFormScreen({ route, navigation }) {
     email: existing?.email ?? '',
     phone: existing?.phone ?? '',
     address: existing?.address ?? '',
-    specialization: existing?.specialization ?? '',
     qualifications: existing?.qualifications ?? '',
     bio: existing?.bio ?? '',
-    consultationFee: existing?.consultationFee != null ? String(existing.consultationFee) : '',
     isActive: existing?.isActive !== false,
     googleCalendarEnabled: existing?.googleCalendarEnabled ?? false,
     clinicId: existing?.clinicId ?? null,
     availabilityStartTime: '09:00',
     availabilityEndTime: '17:00',
-    slotDuration: '30',
   });
 
   const [achievements, setAchievements] = useState(
@@ -34,7 +30,6 @@ export default function DoctorFormScreen({ route, navigation }) {
   );
 
   const [availabilityDays, setAvailabilityDays] = useState(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']);
-  const [clinics, setClinics] = useState([]);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -42,10 +37,7 @@ export default function DoctorFormScreen({ route, navigation }) {
   const [fixedSalary, setFixedSalary] = useState(existing?.compensation?.fixedSalary ? String(existing.compensation.fixedSalary) : '');
   const [doctorSharePercent, setDoctorSharePercent] = useState(existing?.compensation?.doctorSharePercent ? String(existing.compensation.doctorSharePercent) : '');
   const [clinicSharePercent, setClinicSharePercent] = useState(existing?.compensation?.clinicSharePercent ? String(existing.compensation.clinicSharePercent) : '');
-
-  useEffect(() => {
-    clinicApi.getAll().then(setClinics).catch(() => {});
-  }, []);
+  const [emergencyFee, setEmergencyFee] = useState(existing?.emergencyFee ? String(existing.emergencyFee) : '');
 
   const updateField = (key, value) => {
     setForm({ ...form, [key]: value });
@@ -72,7 +64,6 @@ export default function DoctorFormScreen({ route, navigation }) {
     if (!form.email.trim()) errs.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = 'Invalid email format';
     if (form.phone && !/^\d{10}$/.test(form.phone.trim())) errs.phone = 'Must be 10 digits';
-    if (form.consultationFee) { const f = parseFloat(form.consultationFee); if (isNaN(f) || f < 0) errs.consultationFee = 'Must be a positive number'; }
     if (compensationType === 'REVENUE_SHARING' || compensationType === 'HYBRID') {
       const d = parseFloat(doctorSharePercent) || 0;
       const c = parseFloat(clinicSharePercent) || 0;
@@ -89,16 +80,16 @@ export default function DoctorFormScreen({ route, navigation }) {
       const payload = {
         name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() || null,
         address: form.address.trim() || null,
-        specialization: form.specialization.trim() || null, qualifications: form.qualifications.trim() || null,
-        bio: form.bio.trim() || null, consultationFee: form.consultationFee ? parseFloat(form.consultationFee) : null,
+        qualifications: form.qualifications.trim() || null,
+        bio: form.bio.trim() || null,
         isActive: form.isActive, googleCalendarEnabled: form.googleCalendarEnabled,
+        emergencyFee: emergencyFee ? parseFloat(emergencyFee) : null,
         achievements: achievements.filter(a => a.title.trim()),
         clinicId: form.clinicId || null,
       };
       if (!isEdit) {
         payload.availabilityStartTime = form.availabilityStartTime.trim() || '09:00';
         payload.availabilityEndTime = form.availabilityEndTime.trim() || '17:00';
-        payload.slotDuration = parseInt(form.slotDuration, 10) || 30;
         payload.availabilityDays = availabilityDays;
       }
       let createdId;
@@ -123,8 +114,8 @@ export default function DoctorFormScreen({ route, navigation }) {
         ]);
       } else {
         Alert.alert(
-          'Doctor Added Successfully',
-          `Doctor profile and availability slots created.\n\nLogin Username: ${form.email.trim()}\nLogin Password: password123`,
+          '🎉 Doctor Registered',
+          `━━━━━━━━━━━━━━━━━━━━━━━\n  LOGIN CREDENTIALS\n━━━━━━━━━━━━━━━━━━━━━━━\n\n  👤 Username: ${created.tempUsername}\n  🔑 Password: ${created.tempPassword}\n\n━━━━━━━━━━━━━━━━━━━━━━━\n\n  📌 Format: doctor.firstname.lastname\n  🔐 Change password after first login.\n\n  Doctor profile & availability created!`,
           [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
       }
@@ -147,36 +138,8 @@ export default function DoctorFormScreen({ route, navigation }) {
           <Field label="Phone" error={errors.phone}>
             <TextInput style={[styles.input, errors.phone && styles.inputError]} value={form.phone} onChangeText={(v) => updateField('phone', v)} placeholder="10-digit number" placeholderTextColor={colors.textMuted} keyboardType="phone-pad" />
           </Field>
-          <Field label="Clinic Address">
-            <TextInput style={[styles.input, styles.multiline]} value={form.address} onChangeText={(v) => updateField('address', v)} placeholder="Full clinic address for patients to visit" placeholderTextColor={colors.textMuted} multiline numberOfLines={3} />
-          </Field>
-          <Field label="Specialization">
-            <TextInput style={styles.input} value={form.specialization} onChangeText={(v) => updateField('specialization', v)} placeholder="e.g. Cardiologist" placeholderTextColor={colors.textMuted} />
-          </Field>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Clinic Assignment</Text>
-          <Field label="Clinic">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.clinicScroll}>
-              <TouchableOpacity
-                style={[styles.clinicChip, !form.clinicId && styles.clinicChipActive]}
-                onPress={() => updateField('clinicId', null)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.clinicChipText, !form.clinicId && styles.clinicChipTextActive]}>None</Text>
-              </TouchableOpacity>
-              {clinics.map((c) => (
-                <TouchableOpacity
-                  key={c.id}
-                  style={[styles.clinicChip, form.clinicId === c.id && styles.clinicChipActive]}
-                  onPress={() => updateField('clinicId', c.id)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.clinicChipText, form.clinicId === c.id && styles.clinicChipTextActive]}>{c.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+          <Field label="Home Address">
+            <TextInput style={[styles.input, styles.multiline]} value={form.address} onChangeText={(v) => updateField('address', v)} placeholder="Doctor's home address" placeholderTextColor={colors.textMuted} multiline numberOfLines={3} />
           </Field>
         </View>
 
@@ -217,10 +180,11 @@ export default function DoctorFormScreen({ route, navigation }) {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Fee</Text>
-          <Field label="Consultation Fee (₹)" error={errors.consultationFee}>
-            <TextInput style={[styles.input, errors.consultationFee && styles.inputError]} value={form.consultationFee} onChangeText={(v) => updateField('consultationFee', v)} placeholder="e.g. 500" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" />
+          <Text style={styles.sectionTitle}>Emergency Fee</Text>
+          <Field label="Emergency Consultation Fee (₹)" error={errors.emergencyFee}>
+            <TextInput style={[styles.input, errors.emergencyFee && styles.inputError]} value={emergencyFee} onChangeText={setEmergencyFee} placeholder="e.g. 1000" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" />
           </Field>
+          <Text style={{ fontSize: 11, color: colors.textMuted, fontStyle: 'italic', marginTop: -8 }}>Charge extra for emergency appointments. Patients booking as emergency will be billed this amount.</Text>
         </View>
 
         <View style={styles.card}>
@@ -272,9 +236,6 @@ export default function DoctorFormScreen({ route, navigation }) {
                 <TextInput style={styles.input} value={form.availabilityEndTime} onChangeText={(v) => updateField('availabilityEndTime', v)} placeholder="e.g. 17:00" placeholderTextColor={colors.textMuted} />
               </Field>
             </View>
-            <Field label="Slot Duration (minutes)">
-              <TextInput style={styles.input} value={form.slotDuration} onChangeText={(v) => updateField('slotDuration', v)} placeholder="e.g. 30" placeholderTextColor={colors.textMuted} keyboardType="number-pad" />
-            </Field>
             <Field label="Work Days">
               <View style={styles.daysRow}>
                 {['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'].map((day) => {

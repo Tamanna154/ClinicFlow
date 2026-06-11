@@ -85,6 +85,7 @@ public class ConsultationService {
         consultation.setDiagnosis(request.getDiagnosis());
         consultation.setDoctorNotes(request.getDoctorNotes());
         consultation.setBloodPressure(request.getBloodPressure());
+        consultation.setBloodSugar(request.getBloodSugar());
         consultation.setPulseRate(request.getPulseRate());
         consultation.setWeight(request.getWeight());
         consultation.setHeight(request.getHeight());
@@ -334,26 +335,28 @@ public class ConsultationService {
                 appointmentRepository.findByDoctorIdAndAppointmentDateOrderByStartTime(doctorId, today)
                         .stream().filter(a -> "SCHEDULED".equals(a.getStatus()) || "CONFIRMED".equals(a.getStatus())).count());
 
-        List<ConsultationBill> todayBills = consultationBillRepository.findAll().stream()
-                .filter(b -> b.getCreatedAt() != null
-                        && b.getCreatedAt().toLocalDate().equals(today))
+        List<Consultation> todayConsultations = consultations.stream()
+                .filter(c -> c.getCreatedAt() != null && c.getCreatedAt().toLocalDate().equals(today))
                 .toList();
 
         BigDecimal consultationRev = BigDecimal.ZERO;
-        BigDecimal medicineRev = BigDecimal.ZERO;
-        for (ConsultationBill b : todayBills) {
-            if ("PAID".equalsIgnoreCase(b.getPaymentStatus())) {
-                consultationRev = consultationRev.add(b.getTotalAmount());
+        for (Consultation c : todayConsultations) {
+            var billOpt = consultationBillRepository.findByConsultationId(c.getId());
+            if (billOpt.isPresent()) {
+                ConsultationBill b = billOpt.get();
+                if ("PAID".equalsIgnoreCase(b.getPaymentStatus())) {
+                    consultationRev = consultationRev.add(b.getTotalAmount());
+                }
             }
         }
 
-        List<Object[]> incomeData = incomeRecordRepository.sumByIncomeType();
-        for (Object[] row : incomeData) {
-            String type = (String) row[0];
-            if ("CONSULTATION".equals(type)) {
-                consultationRev = consultationRev.add((BigDecimal) row[1]);
-            } else if ("MEDICINE_SALE".equals(type)) {
-                medicineRev = medicineRev.add((BigDecimal) row[1]);
+        BigDecimal medicineRev = BigDecimal.ZERO;
+        OffsetDateTime startOfDay = today.atStartOfDay().atOffset(OffsetDateTime.now().getOffset());
+        OffsetDateTime endOfDay = today.plusDays(1).atStartOfDay().atOffset(OffsetDateTime.now().getOffset());
+        List<IncomeRecord> todayIncome = incomeRecordRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(startOfDay, endOfDay);
+        for (IncomeRecord r : todayIncome) {
+            if ("MEDICINE_SALE".equals(r.getIncomeType()) && userId.equals(r.getReceivedBy())) {
+                medicineRev = medicineRev.add(r.getAmount());
             }
         }
 
@@ -403,6 +406,7 @@ public class ConsultationService {
                     .status(a.getStatus())
                     .isOnline(a.getIsOnline())
                     .consultationStatus(existingConsultation.map(Consultation::getStatus).orElse(null))
+                    .appointmentType(a.getAppointmentType())
                     .build());
         }
         builder.todayAppointments(todayItems);

@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, Platform, StatusBar,
+  ActivityIndicator, RefreshControl, Platform, StatusBar, Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { inventoryApi } from '../api/inventoryApi';
@@ -60,8 +60,15 @@ export default function PharmacistDashboardScreen({ navigation }) {
   const [todaySales, setTodaySales] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { formatCurrency } = useSettings();
+
+  const handleLogout = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: logout }
+    ]);
+  };
 
   const fetchData = useCallback(async (isRefresh) => {
     try {
@@ -110,9 +117,14 @@ export default function PharmacistDashboardScreen({ navigation }) {
                 <Text style={styles.pharmacistName}>{user?.name || 'Pharmacist'}</Text>
               </View>
             </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Pharmacist</Text>
-            </View>
+            <TouchableOpacity 
+              style={styles.logoutBtnSmall} 
+              activeOpacity={0.7} 
+              onPress={handleLogout}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            >
+              <Text style={{ fontSize: 16 }}>🚪</Text>
+            </TouchableOpacity>
           </View>
           <Text style={styles.headerSub}>Manage your pharmacy and dispensary</Text>
         </View>
@@ -246,7 +258,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 16, paddingBottom: 24 },
   header: {
     backgroundColor: colors.primary,
-    paddingTop: 8,
+    paddingTop: Platform.OS === 'ios' ? 56 : (StatusBar.currentHeight || 24) + 12,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
@@ -322,4 +334,12 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 32, marginBottom: 8 },
   emptyTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
   emptySub: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  logoutBtnSmall: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

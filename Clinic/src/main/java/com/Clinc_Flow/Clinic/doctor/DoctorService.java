@@ -99,27 +99,53 @@ public class DoctorService {
         }
 
         // Auto-create matching User account if it doesn't exist
-        if (!userRepository.existsByUsername(request.getEmail())) {
-            String defaultPassword = "password123";
-            com.Clinc_Flow.Clinic.user.User userObj = com.Clinc_Flow.Clinic.user.User.builder()
-                    .name(request.getName())
-                    .username(request.getEmail())
-                    .password(passwordEncoder.encode(defaultPassword))
-                    .role(com.Clinc_Flow.Clinic.user.User.Role.DOCTOR)
-                    .email(request.getEmail())
-                    .phone(request.getPhone())
-                    .doctorId(savedDoctor.getId())
-                    .build();
-            userRepository.save(userObj);
-        } else {
-            userRepository.findByUsername(request.getEmail()).ifPresent(u -> {
-                if (u.getRole() == com.Clinc_Flow.Clinic.user.User.Role.DOCTOR) {
-                    u.setDoctorId(savedDoctor.getId());
-                    userRepository.save(u);
-                }
-            });
+        String tempUsername = "";
+        String tempPassword = "";
+        
+        String firstName = "doctor";
+        if (request.getName() != null && !request.getName().trim().isEmpty()) {
+            String[] parts = request.getName().trim().split("\\s+");
+            if (parts.length > 0) {
+                firstName = parts[0];
+            }
         }
-        return DoctorResponse.fromEntity(savedDoctor);
+        String cleanFirstName = firstName.toLowerCase().replaceAll("[^a-z0-9]", "");
+        if (cleanFirstName.isEmpty()) cleanFirstName = "doctor";
+        
+        String capitalizedFirstName = cleanFirstName.substring(0, 1).toUpperCase() + cleanFirstName.substring(1);
+        tempPassword = "Dr@" + capitalizedFirstName;
+
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            tempUsername = request.getEmail().trim();
+            if (userRepository.existsByUsername(tempUsername)) {
+                throw new IllegalArgumentException("A user with username " + tempUsername + " already exists");
+            }
+        } else {
+            String baseUsername = "dr" + cleanFirstName + "@gmail.com";
+            String generatedUsername = baseUsername;
+            int suffix = 1;
+            while (userRepository.existsByUsername(generatedUsername)) {
+                generatedUsername = "dr" + cleanFirstName + suffix + "@gmail.com";
+                suffix++;
+            }
+            tempUsername = generatedUsername;
+        }
+
+        com.Clinc_Flow.Clinic.user.User userObj = com.Clinc_Flow.Clinic.user.User.builder()
+                .name(request.getName())
+                .username(tempUsername)
+                .password(passwordEncoder.encode(tempPassword))
+                .role(com.Clinc_Flow.Clinic.user.User.Role.DOCTOR)
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .doctorId(savedDoctor.getId())
+                .build();
+        userRepository.save(userObj);
+
+        DoctorResponse response = DoctorResponse.fromEntity(savedDoctor);
+        response.setTempUsername(tempUsername);
+        response.setTempPassword(tempPassword);
+        return response;
     }
 
     @Transactional

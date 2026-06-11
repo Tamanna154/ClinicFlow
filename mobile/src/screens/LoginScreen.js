@@ -6,27 +6,57 @@ import {
 import { login } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
 import { setToken as setApiToken } from '../api/client';
-import { getApiBase, initializeApiBase } from '../api/apiBase';
+import { getApiBase, initializeApiBase, resetApiBase as resetApiBaseFn } from '../api/apiBase';
 import { colors, borderRadius, shadows } from '../theme';
 
 export default function LoginScreen({ navigation }) {
   const { setUser, setToken } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('clincflow@gmail.com');
+  const [password, setPassword] = useState('clinic@flow');
   const [loading, setLoading] = useState(false);
   const [serverUrl, setServerUrl] = useState(getApiBase());
   const [discovering, setDiscovering] = useState(true);
   const probedRef = useRef(false);
 
   useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setServerUrl(getApiBase());
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  useEffect(() => {
     if (probedRef.current) return;
     probedRef.current = true;
     (async () => {
-      await initializeApiBase();
-      setServerUrl(getApiBase());
-      setDiscovering(false);
+      try {
+        await initializeApiBase();
+      } catch (err) {
+        console.warn('initializeApiBase failed:', err);
+      } finally {
+        setServerUrl(getApiBase());
+        setDiscovering(false);
+      }
     })();
   }, []);
+
+  const tryAutoDetect = async (showResult = true) => {
+    try {
+      await resetApiBaseFn();
+      await initializeApiBase(true);
+      const newUrl = getApiBase();
+      setServerUrl(newUrl);
+      if (showResult) {
+        Alert.alert('Auto-Detect Complete', `Server at: ${newUrl}\n\nTap Login Now to try again.`, [
+          { text: 'Login Now', onPress: () => handleLogin() },
+          { text: 'OK', style: 'cancel' }
+        ]);
+      }
+      return newUrl;
+    } catch (_) {
+      return null;
+    }
+  };
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -34,9 +64,24 @@ export default function LoginScreen({ navigation }) {
       return;
     }
     setLoading(true);
+
+    const lowerUser = username.trim().toLowerCase();
+    const cleanPass = password.trim();
+
     try {
       const data = await login(username.trim(), password.trim());
-      const user = { id: data.id, name: data.name, username: data.username, role: data.role, doctorId: data.doctorId, patientId: data.patientId, permissions: data.permissions || [] };
+      const user = { 
+        id: data.id, 
+        name: data.name, 
+        username: data.username, 
+        role: data.role, 
+        roleTitle: data.roleTitle,
+        doctorId: data.doctorId, 
+        patientId: data.patientId, 
+        email: data.email,
+        phone: data.phone,
+        permissions: data.permissions || [] 
+      };
       setUser(user);
       setToken(data.token);
       setApiToken(data.token);
@@ -44,27 +89,61 @@ export default function LoginScreen({ navigation }) {
       const msg = err.message || '';
       const isNetwork = msg.includes('network') || msg.includes('timed out') || msg.includes('Unable to connect') || msg.includes('not responding') || msg.includes('reach server') || msg.includes('Cannot reach');
       const isAuth = msg.includes('Invalid username') || msg.includes('401');
+
       if (isNetwork) {
-        const tryReconnect = async () => {
-          try {
-            const { resetApiBase, initializeApiBase } = await import('../api/apiBase');
-            await resetApiBase();
-            await initializeApiBase(true);
-            const { getApiBase } = await import('../api/apiBase');
-            Alert.alert('Retrying', `Trying: ${getApiBase()}`, [
-              { text: 'Login', onPress: () => handleLogin() },
-              { text: 'Server Settings', onPress: () => navigation.navigate('ServerSettings') },
-              { text: 'Cancel', style: 'cancel' },
-            ]);
-          } catch (_) {
-            navigation.navigate('ServerSettings');
+        try {
+          const newUrl = await tryAutoDetect(false);
+          if (newUrl) {
+            try {
+              const data = await login(username.trim(), password.trim());
+              const user = { 
+                id: data.id, 
+                name: data.name, 
+                username: data.username, 
+                role: data.role, 
+                roleTitle: data.roleTitle,
+                doctorId: data.doctorId, 
+                patientId: data.patientId, 
+                email: data.email,
+                phone: data.phone,
+                permissions: data.permissions || [] 
+              };
+              setUser(user);
+              setToken(data.token);
+              setApiToken(data.token);
+              setLoading(false);
+              return;
+            } catch (_) {}
           }
+        } catch (_) {}
+
+        const showTroubleshootOptions = () => {
+          Alert.alert(
+            'Troubleshoot Connection',
+            'Choose an option to fix the connection:',
+            [
+              { text: 'Auto-Detect Server', onPress: async () => { await tryAutoDetect(); setLoading(false); } },
+              { text: 'Server Settings', onPress: () => { setLoading(false); navigation.navigate('ServerSettings'); } },
+              { text: 'Offline Mode', style: 'destructive', onPress: () => useOfflineBypass(lowerUser, cleanPass) },
+              { text: 'Cancel', style: 'cancel', onPress: () => setLoading(false) },
+            ]
+          );
         };
-        Alert.alert('Connection Error', `Cannot reach server at ${serverUrl}\n\n1. Ensure backend is running (java -jar Clinic.jar)\n2. Check firewall allows port 8080\n3. Try a different IP in Server Settings`, [
-          { text: 'Re-scan Network', onPress: tryReconnect },
-          { text: 'Server Settings', onPress: () => navigation.navigate('ServerSettings') },
-          { text: 'OK', style: 'cancel' },
-        ]);
+
+        const isRealDevice = serverUrl.includes('127.0.0.1') || serverUrl.includes('localhost');
+        const usbHint = isRealDevice
+          ? '\n\n📱 Using a real phone?\n  • USB: run → adb reverse tcp:8080 tcp:8080\n  • Wi-Fi: use this PC\'s IP in Server Settings\n  • Firewall: allow port 8080'
+          : '';
+
+        Alert.alert(
+          'Connection Error',
+          `Could not reach server at ${serverUrl}${usbHint}`,
+          [
+            { text: 'Retry', onPress: () => handleLogin() },
+            { text: 'Troubleshoot', onPress: showTroubleshootOptions },
+            { text: 'Offline Mode', style: 'destructive', onPress: () => useOfflineBypass(lowerUser, cleanPass) },
+          ]
+        );
       } else if (isAuth) {
         Alert.alert('Login Failed', 'Invalid username or password');
       } else {
@@ -76,6 +155,56 @@ export default function LoginScreen({ navigation }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const useOfflineBypass = (lowerUser, cleanPass) => {
+    Alert.alert(
+      'Offline Mode',
+      'You are signing in without a server connection. Data will NOT be saved to the database, and most features require the backend to be running.\n\nGo to Server Settings to configure the correct URL.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue Offline',
+          style: 'destructive',
+          onPress: () => {
+            // Admin bypass
+            if (lowerUser === 'clincflow@gmail.com' && cleanPass === 'clinic@flow') {
+              setUser({
+                id: 1, name: 'Clinic Flow Admin', username: 'clincflow@gmail.com',
+                role: 'CLINIC_ADMIN', email: 'clincflow@gmail.com', phone: '7383733435',
+                permissions: ['VIEW_PATIENTS', 'MANAGE_PATIENTS', 'VIEW_CALENDAR', 'MANAGE_CALENDAR', 'VIEW_APPOINTMENTS', 'MANAGE_APPOINTMENTS', 'VIEW_DOCTORS', 'MANAGE_PERMISSIONS', 'VIEW_INVENTORY', 'MANAGE_INVENTORY', 'VIEW_BILLING', 'MANAGE_BILLING', 'VIEW_INCOME']
+              });
+              setToken('mock-admin-token');
+              setApiToken('mock-admin-token');
+              return;
+            }
+            if (cleanPass.startsWith('Dr@') && cleanPass.length > 3) {
+              const capitalized = cleanPass.substring(3);
+              setUser({
+                id: 2, name: `Dr. ${capitalized}`, username: lowerUser,
+                role: 'DOCTOR', doctorId: 1, email: lowerUser, phone: '9999999999',
+                permissions: ['VIEW_PATIENTS', 'MANAGE_PATIENTS', 'VIEW_CALENDAR', 'MANAGE_CALENDAR', 'VIEW_APPOINTMENTS', 'MANAGE_APPOINTMENTS', 'VIEW_DOCTORS']
+              });
+              setToken('mock-doctor-token');
+              setApiToken('mock-doctor-token');
+              return;
+            }
+            if (cleanPass.startsWith('Pa@') && cleanPass.length > 3) {
+              const capitalized = cleanPass.substring(3);
+              setUser({
+                id: 3, name: capitalized, username: lowerUser,
+                role: 'PATIENT', patientId: 1, email: lowerUser, phone: '8888888888',
+                permissions: []
+              });
+              setToken('mock-patient-token');
+              setApiToken('mock-patient-token');
+              return;
+            }
+            Alert.alert('Invalid Credentials', 'Offline mode only supports the demo accounts shown on the login screen.');
+          }
+        }
+      ]
+    );
   };
 
   if (discovering) {
@@ -161,9 +290,13 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
 
           <View style={styles.footer}>
-            <Text style={styles.hint}>Doctor: doctor@gmail.com / doctor123</Text>
-            <Text style={styles.hint}>Admin: admin@gmail.com / admin123</Text>
-            <Text style={styles.hint}>Receptionist: receptionist@gmail.com / reception123</Text>
+            <Text style={styles.hintTitle}>🔐 Test Credentials</Text>
+            <Text style={styles.hint}>Admin:    clincflow@gmail.com / clinic@flow</Text>
+            <Text style={styles.hint}>Doctor:   drtamanna@gmail.com / Dr@Tamanna</Text>
+            <Text style={styles.hint}>Patient:  padhyey@gmail.com / Pa@Dhyey</Text>
+            <Text style={styles.hint}>Patient2: patient1@gmail.com / Pa@Test</Text>
+            <Text style={styles.hint}>Staff:     staff@clinic.com / Staff@123</Text>
+            <Text style={styles.hintSmall}>👤 View all credentials: Login as Admin → Dashboard → Login Credentials</Text>
             <Text style={styles.serverUrl}>{serverUrl}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('ServerSettings')} style={styles.serverBtn} activeOpacity={0.7}>
               <Text style={styles.serverBtnText}>⚙ Server Settings</Text>
@@ -229,7 +362,9 @@ const styles = StyleSheet.create({
   forgotWrap: { marginTop: 8, alignItems: 'center' },
   forgotText: { fontSize: 13, color: colors.primaryLight, fontWeight: '600' },
   footer: { alignItems: 'center', paddingTop: 24, marginTop: 12, borderTopWidth: 1, borderTopColor: colors.borderLight },
-  hint: { fontSize: 12, color: colors.textMuted, marginTop: 3, textAlign: 'center', letterSpacing: 0.2 },
+  hintTitle: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginTop: 4, marginBottom: 4, textAlign: 'center' },
+  hint: { fontSize: 12, color: colors.textMuted, marginTop: 2, textAlign: 'center', letterSpacing: 0.2 },
+  hintSmall: { fontSize: 10, color: colors.textMuted, marginTop: 6, textAlign: 'center', fontStyle: 'italic' },
   serverUrl: { fontSize: 9, color: colors.textMuted, marginTop: 6, textAlign: 'center', opacity: 0.6 },
   serverBtn: { marginTop: 14, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.borderLight },
   serverBtnText: { fontSize: 12, color: colors.textSecondary, fontWeight: '600', letterSpacing: 0.3 },

@@ -6,13 +6,15 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { appointmentApi } from '../api/appointmentApi';
 import { usePermission } from '../hooks/usePermission';
+import { useAuth } from '../context/AuthContext';
 import AppointmentCard from '../components/AppointmentCard';
 import { colors, borderRadius, shadows } from '../theme';
 
 const FILTERS = ['All', 'SCHEDULED', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
 
 export default function AppointmentListScreen({ route, navigation }) {
-  const doctorId = route.params?.doctorId;
+  const { user } = useAuth();
+  const doctorId = route.params?.doctorId || (user?.role === 'DOCTOR' ? user?.doctorId : null);
   const patientId = route.params?.patientId;
 
   const [appointments, setAppointments] = useState([]);

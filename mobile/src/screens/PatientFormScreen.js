@@ -78,9 +78,19 @@ export default function PatientFormScreen({ route, navigation }) {
         emergencyContactPhone: form.emergencyContactPhone.trim() || null,
         createdByType: user?.role, createdById: user?.id, createdByName: user?.name,
       };
-      if (isEdit) await patientApi.update(existing.id, payload);
-      else await patientApi.create(payload);
-      navigation.goBack();
+      if (isEdit) {
+        await patientApi.update(existing.id, payload);
+        Alert.alert('Success', 'Patient details updated successfully.', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
+      } else {
+        const res = await patientApi.create(payload);
+        Alert.alert(
+          '🎉 Patient Registered',
+          `━━━━━━━━━━━━━━━━━━━━━━━\n  LOGIN CREDENTIALS\n━━━━━━━━━━━━━━━━━━━━━━━\n\n  👤 Username: ${res.tempUsername}\n  🔑 Password: ${res.tempPassword}\n\n━━━━━━━━━━━━━━━━━━━━━━━\n\n  📌 Format: patient.firstname.lastname\n  🔐 Change password after first login.\n\n  SMS sent to patient's phone.`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      }
     } catch (err) { Alert.alert('Error', err.message || 'Could not save.'); }
     finally { setSaving(false); }
   };

@@ -32,9 +32,7 @@ export default function ClinicSetupScreen({ navigation }) {
     registrationNumber: '',
     gstNumber: '',
     workingHours: '',
-    consultationFees: '',
     appointmentDuration: '15',
-    specialization: '',
     timezone: 'Asia/Kolkata',
     currency: 'INR',
     socialMediaLinks: '',
@@ -69,9 +67,7 @@ export default function ClinicSetupScreen({ navigation }) {
           registrationNumber: clinic.registrationNumber || '',
           gstNumber: clinic.gstNumber || '',
           workingHours: clinic.workingHours || '',
-          consultationFees: clinic.consultationFees != null ? String(clinic.consultationFees) : '',
           appointmentDuration: clinic.appointmentDuration ? String(clinic.appointmentDuration) : '15',
-          specialization: clinic.specialization || '',
           timezone: clinic.timezone || 'Asia/Kolkata',
           currency: clinic.currency || 'INR',
           socialMediaLinks: clinic.socialMediaLinks || '',
@@ -131,7 +127,6 @@ export default function ClinicSetupScreen({ navigation }) {
     if (!form.name.trim()) errs.name = 'Clinic name is required';
     if (!form.contactNumber.trim()) errs.contactNumber = 'Contact number is required';
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = 'Invalid email format';
-    if (form.consultationFees) { const f = parseFloat(form.consultationFees); if (isNaN(f) || f < 0) errs.consultationFees = 'Must be a positive number'; }
     const dur = parseInt(form.appointmentDuration, 10);
     if (isNaN(dur) || dur < 1) errs.appointmentDuration = 'Must be at least 1 minute';
     setErrors(errs);
@@ -155,9 +150,7 @@ export default function ClinicSetupScreen({ navigation }) {
         registrationNumber: form.registrationNumber.trim() || null,
         gstNumber: form.gstNumber.trim() || null,
         workingHours: form.workingHours.trim() || null,
-        consultationFees: form.consultationFees ? parseFloat(form.consultationFees) : null,
         appointmentDuration: parseInt(form.appointmentDuration, 10) || 15,
-        specialization: form.specialization.trim() || null,
         timezone: form.timezone.trim() || 'Asia/Kolkata',
         currency: form.currency,
         socialMediaLinks: form.socialMediaLinks.trim() || null,
@@ -244,18 +237,12 @@ export default function ClinicSetupScreen({ navigation }) {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Working Hours & Fees</Text>
+          <Text style={styles.sectionTitle}>Working Hours</Text>
           <Field label="Working Hours">
             <TextInput style={styles.input} value={form.workingHours} onChangeText={(v) => updateField('workingHours', v)} placeholder="Mon-Sat: 9:00 AM - 6:00 PM" placeholderTextColor={colors.textMuted} />
           </Field>
-          <Field label="Consultation Fees" error={errors.consultationFees}>
-            <TextInput style={[styles.input, errors.consultationFees && styles.inputError]} value={form.consultationFees} onChangeText={(v) => updateField('consultationFees', v)} placeholder="e.g. 500" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" />
-          </Field>
           <Field label="Appointment Duration (minutes)" error={errors.appointmentDuration}>
             <TextInput style={[styles.input, errors.appointmentDuration && styles.inputError]} value={form.appointmentDuration} onChangeText={(v) => updateField('appointmentDuration', v)} placeholder="15" placeholderTextColor={colors.textMuted} keyboardType="number-pad" />
-          </Field>
-          <Field label="Clinic Specialization">
-            <TextInput style={styles.input} value={form.specialization} onChangeText={(v) => updateField('specialization', v)} placeholder="e.g. General Medicine, Dental" placeholderTextColor={colors.textMuted} />
           </Field>
         </View>
 

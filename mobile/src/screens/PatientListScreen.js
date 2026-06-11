@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { patientApi } from '../api/patientApi';
+import { appointmentApi } from '../api/appointmentApi';
 import { useAuth } from '../context/AuthContext';
 import { usePermission } from '../hooks/usePermission';
 import PatientCard from '../components/PatientCard';
@@ -27,6 +28,7 @@ export default function PatientListScreen({ navigation }) {
     });
   }, [navigation]);
   const [patients, setPatients] = useState([]);
+  const [relatedPatientIds, setRelatedPatientIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,6 +36,8 @@ export default function PatientListScreen({ navigation }) {
   const { user } = useAuth();
   const { hasPermission } = usePermission();
   const canManagePatients = hasPermission('MANAGE_PATIENTS');
+  const isDoctor = user?.role === 'DOCTOR';
+  const isAdmin = user?.role === 'CLINIC_ADMIN' || user?.role === 'SUPER_ADMIN';
 
   const fetchPatients = async (isRefresh = false) => {
     try {
@@ -41,6 +45,14 @@ export default function PatientListScreen({ navigation }) {
       else setLoading(true);
       const data = await patientApi.getAll(showArchived || undefined);
       setPatients(data);
+      // If doctor, fetch only related patients
+      if (isDoctor && user?.doctorId) {
+        const appts = await appointmentApi.getByDoctor(user.doctorId).catch(() => []);
+        const ids = new Set(appts.map(a => a.patientId).filter(Boolean));
+        setRelatedPatientIds([...ids]);
+      } else {
+        setRelatedPatientIds([]);
+      }
     } catch (err) {
       Alert.alert('Connection Error', 'Could not reach the server.');
     } finally {
@@ -51,11 +63,18 @@ export default function PatientListScreen({ navigation }) {
 
   useFocusEffect(useCallback(() => { fetchPatients(); }, [showArchived]));
 
-  const filtered = patients.filter((p) => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    return (p.name || '').toLowerCase().includes(q) || (p.phone || '').includes(q) || (p.bloodGroup || '').toLowerCase().includes(q);
-  });
+  const filtered = patients
+    .filter(p => {
+      if (isDoctor && !isAdmin && relatedPatientIds.length > 0) {
+        return relatedPatientIds.includes(p.id);
+      }
+      return true;
+    })
+    .filter((p) => {
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return true;
+      return (p.name || '').toLowerCase().includes(q) || (p.phone || '').includes(q) || (p.bloodGroup || '').toLowerCase().includes(q);
+    });
 
   if (loading) {
     return (

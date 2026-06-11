@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, Dimensions, Platform, StatusBar,
+  ActivityIndicator, RefreshControl, Dimensions, Platform, StatusBar, Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LineChart } from 'react-native-chart-kit';
@@ -69,8 +69,15 @@ export default function AccountantDashboardScreen({ navigation }) {
   const [revenueTrend, setRevenueTrend] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { formatCurrency } = useSettings();
+
+  const handleLogout = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: logout }
+    ]);
+  };
 
   const fetchData = useCallback(async (isRefresh) => {
     try {
@@ -137,8 +144,13 @@ export default function AccountantDashboardScreen({ navigation }) {
                 <Text style={styles.accountantName}>{user?.name || 'Accountant'}</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.bellBtn} activeOpacity={0.7}>
-              <Text style={styles.bellIcon}>🔔</Text>
+            <TouchableOpacity 
+              style={styles.bellBtn} 
+              activeOpacity={0.7} 
+              onPress={handleLogout}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            >
+              <Text style={styles.bellIcon}>🚪</Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.headerSub}>Financial overview at a glance</Text>
@@ -300,7 +312,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 24 },
   header: {
     backgroundColor: colors.primary,
-    paddingTop: 8,
+    paddingTop: Platform.OS === 'ios' ? 56 : (StatusBar.currentHeight || 24) + 12,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },

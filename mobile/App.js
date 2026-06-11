@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform, StatusBar, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform, StatusBar, Linking, Modal, TextInput } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -26,6 +26,7 @@ import BulkSmsScreen from './src/screens/BulkSmsScreen';
 import PatientBookingScreen from './src/screens/PatientBookingScreen';
 import PatientAppointmentsScreen from './src/screens/PatientAppointmentsScreen';
 import PatientReportsScreen from './src/screens/PatientReportsScreen';
+import StaffOverviewScreen from './src/screens/StaffOverviewScreen';
 import StaffListScreen from './src/screens/StaffListScreen';
 import StaffFormScreen from './src/screens/StaffFormScreen';
 import PermissionsScreen from './src/screens/PermissionsScreen';
@@ -33,6 +34,7 @@ import InventoryListScreen from './src/screens/InventoryListScreen';
 import InventoryFormScreen from './src/screens/InventoryFormScreen';
 import InventoryDetailScreen from './src/screens/InventoryDetailScreen';
 import InventoryDashboardScreen from './src/screens/InventoryDashboardScreen';
+import SupplierListScreen from './src/screens/SupplierListScreen';
 import BillingDashboardScreen from './src/screens/BillingDashboardScreen';
 import MedicineBillingScreen from './src/screens/MedicineBillingScreen';
 import BillDetailScreen from './src/screens/BillDetailScreen';
@@ -50,7 +52,19 @@ import DoctorEarningsScreen from './src/screens/DoctorEarningsScreen';
 import ReceptionistDashboardScreen from './src/screens/ReceptionistDashboardScreen';
 import PharmacistDashboardScreen from './src/screens/PharmacistDashboardScreen';
 import AccountantDashboardScreen from './src/screens/AccountantDashboardScreen';
+import AdminScheduleScreen from './src/screens/AdminScheduleScreen';
 import ServerSettingsScreen from './src/screens/ServerSettingsScreen';
+
+import PatientDashboardScreen from './src/screens/PatientDashboardScreen';
+import PatientMedicationScreen from './src/screens/PatientMedicationScreen';
+import PatientCampsScreen from './src/screens/PatientCampsScreen';
+import PatientRecordsScreen from './src/screens/PatientRecordsScreen';
+import PatientCalendarScreen from './src/screens/PatientCalendarScreen';
+import PatientHistoryScreen from './src/screens/PatientHistoryScreen';
+import StaffHistoryScreen from './src/screens/StaffHistoryScreen';
+import PatientProfileScreen from './src/screens/PatientProfileScreen';
+import CredentialReportScreen from './src/screens/CredentialReportScreen';
+
 
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { initializeApiBase } from './src/api/apiBase';
@@ -74,9 +88,16 @@ const headerOpts = {
 };
 
 const TAB_ICONS = {
-  Dashboard: 'D', Schedule: 'S', Appts: 'A', Patients: 'P',
-  Doctors: 'Dr', Stock: 'St', Billing: 'B', Income: 'I', Staff: 'Stf',
-  'Doctor Dashboard': 'D',
+  Dashboard: '🏡', Schedule: '📅', Appts: '📅', Patients: '👤',
+  Doctors: '🩺', Stock: '📦', Billing: '🧾', Income: '💵', Staff: '👥',
+  'Doctor Dashboard': '🏡',
+  Home: '🏡',
+  Meds: '💊',
+  Records: '📜',
+  Camps: '🩺',
+  Calendar: '📆',
+  Profile: '👤',
+  Finance: '💵',
 };
 
 function TabIcon({ label, focused }) {
@@ -89,13 +110,25 @@ function TabIcon({ label, focused }) {
 }
 
 function confirmAndLogout(logout) {
-  logout();
+  Alert.alert(
+    'Sign Out',
+    'Are you sure you want to sign out?',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: () => logout() }
+    ]
+  );
 }
 
 function LogoutButton({ tintColor }) {
   const { logout } = useAuth();
   return (
-    <TouchableOpacity onPress={() => confirmAndLogout(logout)} activeOpacity={0.7}>
+    <TouchableOpacity 
+      onPress={() => confirmAndLogout(logout)} 
+      activeOpacity={0.7}
+      style={{ paddingHorizontal: 12, paddingVertical: 8, marginRight: 4 }}
+      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+    >
       <Text style={{ fontSize: 14, color: tintColor || '#FFFFFF', fontWeight: '600' }}>Sign Out</Text>
     </TouchableOpacity>
   );
@@ -131,7 +164,7 @@ function DoctorStack() {
       <Stack.Screen name="Income" component={IncomeDashboardScreen} options={{ title: 'Financial Reports' }} />
       <Stack.Screen name="LetterheadSetup" component={LetterheadSetupScreen} options={{ title: 'Letterhead' }} />
       <Stack.Screen name="DoctorEarnings" component={DoctorEarningsScreen} options={({ route }) => ({ title: `Dr. ${route.params?.doctorName || ''} Earnings` })} />
-      <Stack.Screen name="ClinicSetup" component={ClinicSetupScreen} options={{ title: 'Clinic Setup' }} />
+      <Stack.Screen name="CredentialReport" component={CredentialReportScreen} options={{ title: 'Login Credentials' }} />
     </Stack.Navigator>
   );
 }
@@ -144,6 +177,9 @@ function DashboardStack() {
       <Stack.Screen name="Consultation" component={ConsultationScreen} options={{ title: 'Consultation' }} />
       <Stack.Screen name="ConsultationBilling" component={ConsultationBillingScreen} options={{ title: 'Generate Bill' }} />
       <Stack.Screen name="Prescription" component={PrescriptionScreen} options={{ title: 'Prescription' }} />
+      <Stack.Screen name="PatientCamps" component={PatientCampsScreen} options={{ title: 'Health Campaigns' }} />
+      <Stack.Screen name="LetterheadSetup" component={LetterheadSetupScreen} options={{ title: 'Letterhead' }} />
+      <Stack.Screen name="CredentialReport" component={CredentialReportScreen} options={{ title: 'Login Credentials' }} />
     </Stack.Navigator>
   );
 }
@@ -187,7 +223,8 @@ function PatientPortalStack() {
 function StaffStack() {
   return (
     <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
-      <Stack.Screen name="StaffList" component={StaffListScreen} options={{ title: 'Staff' }} />
+      <Stack.Screen name="StaffOverview" component={StaffOverviewScreen} options={{ title: 'Staff' }} />
+      <Stack.Screen name="StaffList" component={StaffListScreen} options={{ title: 'All Staff' }} />
       <Stack.Screen name="StaffForm" component={StaffFormScreen} options={{ title: 'Add Staff' }} />
       <Stack.Screen name="PermissionsScreen" component={PermissionsScreen} options={({ route }) => ({ title: route.params?.staffName ? `${route.params.staffName}'s Permissions` : 'Permissions' })} />
     </Stack.Navigator>
@@ -201,6 +238,7 @@ function InventoryStack() {
       <Stack.Screen name="InventoryList" component={InventoryListScreen} options={{ title: 'All Items' }} />
       <Stack.Screen name="InventoryForm" component={InventoryFormScreen} options={({ route }) => ({ title: route.params?.item ? 'Edit Item' : 'New Item' })} />
       <Stack.Screen name="InventoryDetail" component={InventoryDetailScreen} options={({ route }) => ({ title: route.params?.item?.itemName || 'Item' })} />
+      <Stack.Screen name="SupplierList" component={SupplierListScreen} options={{ title: 'Suppliers' }} />
     </Stack.Navigator>
   );
 }
@@ -232,7 +270,6 @@ function AdminDashboardStack() {
       <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ title: 'Dashboard' }} />
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} initialParams={{ isDoctor: true }} options={{ title: 'Appointment' }} />
       <Stack.Screen name="AppointmentList" component={AppointmentListScreen} options={{ title: 'Appointments' }} />
-      <Stack.Screen name="AppointmentBooking" component={AppointmentBookingScreen} options={{ title: 'Book Appointment' }} />
       <Stack.Screen name="Consultation" component={ConsultationScreen} options={{ title: 'Consultation' }} />
       <Stack.Screen name="ConsultationBilling" component={ConsultationBillingScreen} options={{ title: 'Generate Bill' }} />
       <Stack.Screen name="Prescription" component={PrescriptionScreen} options={{ title: 'Prescription' }} />
@@ -244,6 +281,9 @@ function AdminDashboardStack() {
       <Stack.Screen name="PermissionsScreen" component={PermissionsScreen} options={{ title: 'Permissions' }} />
       <Stack.Screen name="DoctorEarnings" component={DoctorEarningsScreen} options={({ route }) => ({ title: `Dr. ${route.params?.doctorName || ''} Earnings` })} />
       <Stack.Screen name="ClinicSetup" component={ClinicSetupScreen} options={{ title: 'Clinic Setup' }} />
+      <Stack.Screen name="PatientHistory" component={PatientHistoryScreen} options={{ title: 'Patient History' }} />
+      <Stack.Screen name="StaffHistory" component={StaffHistoryScreen} options={{ title: 'Staff Activity History' }} />
+      <Stack.Screen name="CredentialReport" component={CredentialReportScreen} options={{ title: 'Login Credentials' }} />
     </Stack.Navigator>
   );
 }
@@ -260,133 +300,9 @@ function PatientAppointmentStack() {
   );
 }
 
-function PatientDashboardScreen({ navigation }) {
-  const { user, logout } = useAuth();
 
-  const handleEmergencyMap = async () => {
-    try {
-      const clinic = await clinicApi.getMyClinic();
-      if (clinic && clinic.address) {
-        const fullAddr = `${clinic.name}, ${clinic.address}, ${clinic.city || ''}, ${clinic.state || ''}`;
-        const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddr)}`;
-        Linking.openURL(url).catch(() => {
-          Alert.alert('Error', 'Could not open Google Maps');
-        });
-      } else {
-        const url = `https://www.google.com/maps/search/?api=1&query=Clinic`;
-        Linking.openURL(url).catch(() => {
-          Alert.alert('Error', 'Could not open Google Maps');
-        });
-      }
-    } catch (e) {
-      Alert.alert('Error', 'Failed to retrieve clinic address for maps.');
-    }
-  };
 
-  return (
-    <View style={patientStyles.container}>
-      <View style={patientStyles.header}>
-        <TouchableOpacity style={patientStyles.headerLogout} onPress={() => confirmAndLogout(logout)} activeOpacity={0.7}>
-          <Text style={{ fontSize: 18, color: '#FFFFFFCC' }}>↩</Text>
-        </TouchableOpacity>
-        <View style={patientStyles.avatar}>
-          <Text style={patientStyles.avatarText}>{user?.name?.charAt(0)?.toUpperCase() || 'P'}</Text>
-        </View>
-        <Text style={patientStyles.greeting}>Welcome, {user?.name || 'Patient'}</Text>
-        <Text style={patientStyles.role}>Patient Portal</Text>
-      </View>
-      <ScrollView contentContainerStyle={patientStyles.cardsContainer}>
-        <TouchableOpacity style={[patientStyles.emergencyBtn]} onPress={handleEmergencyMap} activeOpacity={0.85}>
-          <Text style={patientStyles.emergencyBtnText}>🚨 EMERGENCY: FIND CLINIC MAP</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[patientStyles.btn, { backgroundColor: colors.primary }]} onPress={() => navigation.navigate('My Appointments', { screen: 'PatientAppointmentList' })} activeOpacity={0.85}>
-          <Text style={patientStyles.btnText}>My Appointments</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[patientStyles.btn, { backgroundColor: colors.primaryLight }]} onPress={() => navigation.navigate('My Appointments', { screen: 'PatientReports' })} activeOpacity={0.85}>
-          <Text style={patientStyles.btnText}>My Reports</Text>
-        </TouchableOpacity>
-        <View style={patientStyles.infoCard}>
-          <Text style={patientStyles.infoLabel}>Username</Text>
-          <Text style={patientStyles.infoValue}>{user?.username || '-'}</Text>
-        </View>
-        <View style={patientStyles.infoCard}>
-          <Text style={patientStyles.infoLabel}>Email</Text>
-          <Text style={patientStyles.infoValue}>{user?.email || '-'}</Text>
-        </View>
-        <View style={patientStyles.infoCard}>
-          <Text style={patientStyles.infoLabel}>Phone</Text>
-          <Text style={patientStyles.infoValue}>{user?.phone || '-'}</Text>
-        </View>
-        <TouchableOpacity style={patientStyles.logoutBtn} onPress={() => confirmAndLogout(logout)} activeOpacity={0.85}>
-          <Text style={patientStyles.logoutBtnText}>Sign Out</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  );
-}
 
-function PatientProfileScreen() {
-  const { user, logout } = useAuth();
-  return (
-    <View style={patientStyles.container}>
-      <View style={patientStyles.header}>
-        <TouchableOpacity style={patientStyles.headerLogout} onPress={() => confirmAndLogout(logout)} activeOpacity={0.7}>
-          <Text style={{ fontSize: 18, color: '#FFFFFFCC' }}>↩</Text>
-        </TouchableOpacity>
-        <View style={patientStyles.avatar}>
-          <Text style={patientStyles.avatarText}>{user?.name?.charAt(0)?.toUpperCase() || 'P'}</Text>
-        </View>
-        <Text style={patientStyles.greeting}>{user?.name || 'Patient'}</Text>
-        <Text style={patientStyles.role}>Patient Portal</Text>
-      </View>
-      <ScrollView contentContainerStyle={patientStyles.cardsContainer}>
-        <View style={patientStyles.infoCard}>
-          <Text style={patientStyles.infoLabel}>Username</Text>
-          <Text style={patientStyles.infoValue}>{user?.username || '-'}</Text>
-        </View>
-        <View style={patientStyles.infoCard}>
-          <Text style={patientStyles.infoLabel}>Role</Text>
-          <Text style={patientStyles.infoValue}>{user?.role || '-'}</Text>
-        </View>
-        <TouchableOpacity style={patientStyles.logoutBtn} onPress={() => confirmAndLogout(logout)} activeOpacity={0.85}>
-          <Text style={patientStyles.logoutBtnText}>Sign Out</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  );
-}
-
-const patientStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  header: { backgroundColor: colors.primary, paddingTop: 60, paddingBottom: 32, alignItems: 'center' },
-  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#FFFFFF20', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  avatarText: { fontSize: 32, fontWeight: '800', color: '#FFFFFF' },
-  greeting: { fontSize: 22, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.3 },
-  role: { fontSize: 13, color: '#FFFFFFAA', marginTop: 4 },
-  cardsContainer: { padding: 20 },
-  infoCard: {
-    backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: 16, marginBottom: 12,
-    ...shadows.sm, borderWidth: 1, borderColor: colors.borderLight,
-  },
-  infoLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
-  infoValue: { fontSize: 16, fontWeight: '600', color: colors.text },
-  headerLogout: { position: 'absolute', top: 52, right: 20, zIndex: 10, width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF15', justifyContent: 'center', alignItems: 'center' },
-  logoutBtn: {
-    backgroundColor: colors.error, borderRadius: borderRadius.md, paddingVertical: 14,
-    alignItems: 'center', marginTop: 20, ...shadows.md,
-  },
-  logoutBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  btn: {
-    backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 14,
-    alignItems: 'center', marginTop: 8, ...shadows.md,
-  },
-  btnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  emergencyBtn: {
-    backgroundColor: '#DC2626', borderRadius: borderRadius.md, paddingVertical: 15,
-    alignItems: 'center', marginTop: 8, marginBottom: 12, ...shadows.md,
-  },
-  emergencyBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', letterSpacing: 0.2 },
-});
 
 function MyTabBar({ state, descriptors, navigation }) {
   return (
@@ -416,6 +332,32 @@ function MyTabBar({ state, descriptors, navigation }) {
   );
 }
 
+function PharmacistDashboardStack() {
+  return (
+    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
+      <Stack.Screen name="PharmacistDashboard" component={PharmacistDashboardScreen} options={{ title: 'Dashboard' }} />
+      <Stack.Screen name="InventoryDashboard" component={InventoryDashboardScreen} options={{ title: 'Inventory' }} />
+      <Stack.Screen name="InventoryForm" component={InventoryFormScreen} options={({ route }) => ({ title: route.params?.item ? 'Edit Item' : 'New Item' })} />
+      <Stack.Screen name="InventoryDetail" component={InventoryDetailScreen} options={({ route }) => ({ title: route.params?.item?.itemName || 'Item' })} />
+      <Stack.Screen name="MedicineBilling" component={MedicineBillingScreen} options={{ title: 'New Bill' }} />
+      <Stack.Screen name="BillDetail" component={BillDetailScreen} options={{ title: 'Bill Details' }} />
+    </Stack.Navigator>
+  );
+}
+
+function AccountantDashboardStack() {
+  return (
+    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
+      <Stack.Screen name="AccountantDashboard" component={AccountantDashboardScreen} options={{ title: 'Dashboard' }} />
+      <Stack.Screen name="BillingDashboard" component={BillingDashboardScreen} options={{ title: 'Billing' }} />
+      <Stack.Screen name="MedicineBilling" component={MedicineBillingScreen} options={{ title: 'New Bill' }} />
+      <Stack.Screen name="BillDetail" component={BillDetailScreen} options={{ title: 'Bill Details' }} />
+      <Stack.Screen name="AddExpense" component={AddExpenseScreen} options={{ title: 'Add Expense' }} />
+      <Stack.Screen name="IncomeDashboard" component={IncomeDashboardScreen} options={{ title: 'Finance' }} />
+    </Stack.Navigator>
+  );
+}
+
 function ReceptionistDashboardStack() {
   return (
     <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
@@ -441,10 +383,9 @@ function MainTabs() {
       <Tab.Screen name="Calendar" component={CalendarStack} options={{ tabBarLabel: 'Schedule' }} />
       <Tab.Screen name="Appointments" component={AppointmentStack} options={{ tabBarLabel: 'Appts' }} />
       <Tab.Screen name="Patients" component={PatientStack} options={{ tabBarLabel: 'Patients' }} />
-      {isDoctor && <Tab.Screen name="Doctors" component={DoctorStack} options={{ tabBarLabel: 'Doctors' }} />}
       <Tab.Screen name="Billing" component={BillingStack} options={{ tabBarLabel: 'Billing' }} />
       <Tab.Screen name="Inventory" component={InventoryStack} options={{ tabBarLabel: 'Stock' }} />
-      {isDoctor && <Tab.Screen name="Staff" component={StaffStack} options={{ tabBarLabel: 'Staff' }} />}
+      {isDoctor && <Tab.Screen name="Finance" component={IncomeStack} options={{ tabBarLabel: 'Finance' }} />}
     </Tab.Navigator>
   );
 }
@@ -477,28 +418,68 @@ function ReceptionistTabs() {
   );
 }
 
+function PharmacistTabs() {
+  return (
+    <Tab.Navigator tabBar={(props) => <MyTabBar {...props} />} screenOptions={{ headerShown: false }}>
+      <Tab.Screen name="Pharmacist Home" component={PharmacistDashboardStack} options={{ tabBarLabel: 'Home' }} />
+      <Tab.Screen name="Inventory" component={InventoryStack} options={{ tabBarLabel: 'Stock' }} />
+      <Tab.Screen name="Billing" component={BillingStack} options={{ tabBarLabel: 'Billing' }} />
+    </Tab.Navigator>
+  );
+}
+
+function AccountantTabs() {
+  return (
+    <Tab.Navigator tabBar={(props) => <MyTabBar {...props} />} screenOptions={{ headerShown: false }}>
+      <Tab.Screen name="Accountant Home" component={AccountantDashboardStack} options={{ tabBarLabel: 'Home' }} />
+      <Tab.Screen name="Billing" component={BillingStack} options={{ tabBarLabel: 'Billing' }} />
+      <Tab.Screen name="Finance" component={IncomeStack} options={{ tabBarLabel: 'Finance' }} />
+    </Tab.Navigator>
+  );
+}
+
+function AdminScheduleStack() {
+  return (
+    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
+      <Stack.Screen name="AdminSchedule" component={AdminScheduleScreen} options={{ title: 'Schedule' }} />
+      <Stack.Screen name="AppointmentList" component={AppointmentListScreen} options={{ title: 'Doctor Appointments' }} />
+    </Stack.Navigator>
+  );
+}
+
 function AdminTabs() {
   return (
     <Tab.Navigator tabBar={(props) => <MyTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Admin Dashboard" component={AdminDashboardStack} options={{ tabBarLabel: 'Home' }} />
-      <Tab.Screen name="Calendar" component={CalendarStack} options={{ tabBarLabel: 'Schedule' }} />
-      <Tab.Screen name="Appointments" component={AppointmentStack} options={{ tabBarLabel: 'Appts' }} />
+      <Tab.Screen name="Calendar" component={AdminScheduleStack} options={{ tabBarLabel: 'Schedule' }} />
       <Tab.Screen name="Patients" component={PatientStack} options={{ tabBarLabel: 'Patients' }} />
       <Tab.Screen name="Doctors" component={DoctorStack} options={{ tabBarLabel: 'Doctors' }} />
+      <Tab.Screen name="Staff" component={StaffStack} options={{ tabBarLabel: 'Staff' }} />
       <Tab.Screen name="Billing" component={BillingStack} options={{ tabBarLabel: 'Billing' }} />
       <Tab.Screen name="Inventory" component={InventoryStack} options={{ tabBarLabel: 'Stock' }} />
       <Tab.Screen name="Finance" component={IncomeStack} options={{ tabBarLabel: 'Finance' }} />
-      <Tab.Screen name="Staff" component={StaffStack} options={{ tabBarLabel: 'Staff' }} />
     </Tab.Navigator>
   );
 }
 
 function PatientTabs() {
+  const headerWithSignout = {
+    headerStyle: { backgroundColor: colors.primary, elevation: 0, shadowOpacity: 0 },
+    headerTintColor: '#FFFFFF',
+    headerTitleStyle: { fontWeight: '700', fontSize: 17, letterSpacing: -0.3 },
+    headerShadowVisible: false,
+    headerRight: () => <HeaderRight />,
+  };
+
   return (
     <Tab.Navigator tabBar={(props) => <MyTabBar {...props} />} screenOptions={{ headerShown: false }}>
-      <Tab.Screen name="Dashboard" component={PatientDashboardScreen} />
-      <Tab.Screen name="My Appointments" component={PatientAppointmentStack} />
-      <Tab.Screen name="My Profile" component={PatientProfileScreen} />
+      <Tab.Screen name="Dashboard" component={PatientDashboardScreen} options={{ tabBarLabel: 'Home' }} />
+      <Tab.Screen name="My Appointments" component={PatientAppointmentStack} options={{ tabBarLabel: 'Appts' }} />
+      <Tab.Screen name="Medications" component={PatientMedicationScreen} options={{ tabBarLabel: 'Meds', ...headerWithSignout, title: 'My Medications' }} />
+      <Tab.Screen name="Records" component={PatientRecordsScreen} options={{ tabBarLabel: 'Records', ...headerWithSignout, title: 'My Records' }} />
+      <Tab.Screen name="Camps" component={PatientCampsScreen} options={{ tabBarLabel: 'Camps', ...headerWithSignout, title: 'Health Camps' }} />
+      <Tab.Screen name="Calendar" component={PatientCalendarScreen} options={{ tabBarLabel: 'Calendar', ...headerWithSignout, title: 'My Calendar' }} />
+      <Tab.Screen name="Profile" component={PatientProfileScreen} options={{ tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
 }
@@ -541,19 +522,22 @@ function AppContent() {
   React.useEffect(() => { initializeApiBase(); }, []);
   if (!user) {
     return (
-      <NavigationContainer>
-        <ErrorBoundary>
-          <AuthStack />
-        </ErrorBoundary>
-      </NavigationContainer>
+      <ErrorBoundary>
+        <AuthStack />
+      </ErrorBoundary>
     );
   }
   return (
-    <NavigationContainer>
-      <ErrorBoundary>
-        {user.role === 'PATIENT' ? <PatientTabs /> : user.role === 'RECEPTIONIST' ? <ReceptionistTabs /> : user.role === 'CLINIC_ADMIN' || user.role === 'SUPER_ADMIN' ? <AdminTabs /> : <MainTabs />}
-      </ErrorBoundary>
-    </NavigationContainer>
+    <ErrorBoundary>
+      {user.role === 'PATIENT' ? <PatientTabs /> : 
+       user.role === 'RECEPTIONIST' ? (
+         user.roleTitle === 'PHARMACIST' ? <PharmacistTabs /> :
+         user.roleTitle === 'ACCOUNTANT' ? <AccountantTabs /> :
+         <ReceptionistTabs />
+       ) : 
+       user.role === 'CLINIC_ADMIN' || user.role === 'SUPER_ADMIN' ? <AdminTabs /> : 
+       <MainTabs />}
+    </ErrorBoundary>
   );
 }
 
@@ -562,7 +546,9 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <SettingsProvider>
-          <AppContent />
+          <NavigationContainer>
+            <AppContent />
+          </NavigationContainer>
         </SettingsProvider>
       </AuthProvider>
     </SafeAreaProvider>

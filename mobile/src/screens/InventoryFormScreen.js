@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { useEffect } from 'react';
 import { inventoryApi } from '../api/inventoryApi';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
@@ -36,6 +37,23 @@ export default function InventoryFormScreen({ route, navigation }) {
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [suppliersList, setSuppliersList] = useState([]);
+
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        const base = require('../api/apiBase').getApiBase();
+        const res = await require('../api/client').authFetch(`${base}/suppliers/active`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuppliersList(data);
+        }
+      } catch (e) {
+        console.log('Error fetching suppliers', e);
+      }
+    };
+    fetchSuppliers();
+  }, []);
 
   const update = (key, value) => { setForm({ ...form, [key]: value }); if (errors[key]) setErrors({ ...errors, [key]: undefined }); };
 
@@ -66,9 +84,17 @@ export default function InventoryFormScreen({ route, navigation }) {
         description: form.description.trim() || null,
         minimumThreshold: form.minimumThreshold ? parseInt(form.minimumThreshold, 10) : 5,
       };
-      if (isEdit) await inventoryApi.update(existing.id, payload);
-      else await inventoryApi.create(payload);
-      navigation.goBack();
+      if (isEdit) {
+        await inventoryApi.update(existing.id, payload);
+        Alert.alert('Success', 'Item updated successfully.', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        await inventoryApi.create(payload);
+        Alert.alert('Success', 'Item added successfully.', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      }
     } catch (err) { Alert.alert('Error', err.message || 'Could not save.'); }
     finally { setSaving(false); }
   };
@@ -88,7 +114,7 @@ export default function InventoryFormScreen({ route, navigation }) {
             <View style={styles.pillRow}>
               {STOCK_TYPES.map((t) => (
                 <TouchableOpacity key={t} style={[styles.pill, form.stockType === t && styles.pillActive]} onPress={() => update('stockType', t)}>
-                  <Text style={[styles.pillText, form.stockType === t && styles.pillTextActive]}>{t === 'INTERNAL' ? 'Internal' : 'External'}</Text>
+                  <Text style={[styles.pillText, form.stockType === t && styles.pillTextActive]}>{t === 'INTERNAL' ? 'In-House' : 'Store'}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -134,6 +160,19 @@ export default function InventoryFormScreen({ route, navigation }) {
           <Text style={styles.sectionTitle}>Supplier & Batch</Text>
           <Field label="Supplier Name">
             <TextInput style={styles.input} value={form.supplierName} onChangeText={(v) => update('supplierName', v)} placeholder="Supplier..." placeholderTextColor={colors.textMuted} />
+            {suppliersList.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6, flexDirection: 'row' }}>
+                {suppliersList.map((sup) => (
+                  <TouchableOpacity
+                    key={sup.id}
+                    style={[styles.chip, form.supplierName === sup.name && styles.chipActive, { marginRight: 6, paddingVertical: 4 }]}
+                    onPress={() => update('supplierName', sup.name)}
+                  >
+                    <Text style={[styles.chipLabel, form.supplierName === sup.name && styles.chipLabelActive, { fontSize: 11 }]}>{sup.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
           </Field>
           <Field label="Batch Number">
             <TextInput style={styles.input} value={form.batchNumber} onChangeText={(v) => update('batchNumber', v)} placeholder="Batch #" placeholderTextColor={colors.textMuted} />

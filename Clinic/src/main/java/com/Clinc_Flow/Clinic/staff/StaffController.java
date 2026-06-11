@@ -20,14 +20,18 @@ public class StaffController {
     private final DoctorStaffService doctorStaffService;
 
     @GetMapping
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<StaffResponse>> getMyStaff() {
         JwtUserDetails user = (JwtUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        boolean isAdmin = "CLINIC_ADMIN".equals(user.role()) || "SUPER_ADMIN".equals(user.role());
+        if (isAdmin) {
+            return ResponseEntity.ok(doctorStaffService.getAllStaff());
+        }
         return ResponseEntity.ok(doctorStaffService.getMyStaff(user.userId()));
     }
 
     @PostMapping("/create-with-details")
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> createStaffWithDetails(@Valid @RequestBody CreateStaffRequest request) {
         try {
             JwtUserDetails user = (JwtUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -39,7 +43,7 @@ public class StaffController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> addStaff(@RequestBody Map<String, Long> body) {
         try {
             Long staffUserId = body.get("staffUserId");
@@ -54,33 +58,51 @@ public class StaffController {
         }
     }
 
+    @PutMapping("/{staffId}")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'CLINIC_ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<?> updateStaff(
+            @PathVariable Long staffId,
+            @Valid @RequestBody CreateStaffRequest request) {
+        try {
+            JwtUserDetails user = (JwtUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            boolean isAdmin = "CLINIC_ADMIN".equals(user.role()) || "SUPER_ADMIN".equals(user.role());
+            StaffResponse response = doctorStaffService.updateStaffWithDetails(user.userId(), staffId, request, isAdmin);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{staffId}")
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Void> removeStaff(@PathVariable Long staffId) {
         JwtUserDetails user = (JwtUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        doctorStaffService.removeStaff(user.userId(), staffId);
+        boolean isAdmin = "CLINIC_ADMIN".equals(user.role()) || "SUPER_ADMIN".equals(user.role());
+        doctorStaffService.removeStaff(user.userId(), staffId, isAdmin);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{staffId}/permissions")
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<String>> getStaffPermissions(@PathVariable Long staffId) {
         JwtUserDetails user = (JwtUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return ResponseEntity.ok(doctorStaffService.getStaffPermissions(user.userId(), staffId));
+        boolean isAdmin = "CLINIC_ADMIN".equals(user.role()) || "SUPER_ADMIN".equals(user.role());
+        return ResponseEntity.ok(doctorStaffService.getStaffPermissions(user.userId(), staffId, isAdmin));
     }
 
     @PutMapping("/{staffId}/permissions")
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> updateStaffPermissions(
             @PathVariable Long staffId,
             @RequestBody Map<String, List<String>> body) {
         try {
             JwtUserDetails user = (JwtUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            boolean isAdmin = "CLINIC_ADMIN".equals(user.role()) || "SUPER_ADMIN".equals(user.role());
             List<String> permissions = body.get("permissions");
             if (permissions == null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "permissions list is required"));
             }
-            List<String> updated = doctorStaffService.updateStaffPermissions(user.userId(), staffId, permissions);
+            List<String> updated = doctorStaffService.updateStaffPermissions(user.userId(), staffId, permissions, isAdmin);
             return ResponseEntity.ok(Map.of("permissions", updated));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -88,7 +110,7 @@ public class StaffController {
     }
 
     @GetMapping("/permissions-list")
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<String>> getAllPermissions() {
         return ResponseEntity.ok(doctorStaffService.getAllPermissions());
     }

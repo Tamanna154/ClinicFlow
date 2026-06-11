@@ -125,7 +125,7 @@ export const appointmentApi = {
     if (!res.ok) throw new Error('Failed to delete appointment');
   },
 
-  async patientBook(doctorId, date, startTime, endTime, reason) {
+  async patientBook(doctorId, date, startTime, endTime, reason, appointmentType) {
     const apiBase = await getApiBase();
     const res = await authFetch(`${apiBase}/appointments/patient-book`, {
       method: 'POST',
@@ -136,6 +136,7 @@ export const appointmentApi = {
         startTime,
         endTime,
         reason: reason || null,
+        appointmentType: appointmentType || 'IN_PERSON',
       }),
     });
     if (!res.ok) {

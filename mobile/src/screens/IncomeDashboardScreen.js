@@ -133,39 +133,55 @@ export default function IncomeDashboardScreen({ navigation }) {
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchData(true)} tintColor={colors.primary} colors={[colors.primary]} />}
     >
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.pageTitle}>Financial Dashboard</Text>
-          <Text style={styles.pageSub}>Real-time profit & revenue</Text>
+      <View style={styles.headerSection}>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.pageTitle}>Financial Dashboard</Text>
+            <Text style={styles.pageSub}>Real-time profit & revenue overview</Text>
+          </View>
+          <TouchableOpacity style={styles.currencyBtn} onPress={() => navigation.navigate('CurrencySettings')} activeOpacity={0.7}>
+            <Text style={styles.currencyBtnText}>{currencySymbol}</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.currencyBtn} onPress={() => navigation.navigate('CurrencySettings')} activeOpacity={0.7}>
-          <Text style={styles.currencyBtnText}>{currencySymbol}</Text>
-        </TouchableOpacity>
       </View>
 
       <View style={styles.profitBanner}>
-        <Text style={styles.profitLabel}>NET PROFIT</Text>
+        <View style={styles.profitTopRow}>
+          <Text style={styles.profitLabel}>NET PROFIT</Text>
+          <View style={[styles.profitTrendBadge, { backgroundColor: profit.netProfit >= 0 ? colors.success + '20' : colors.error + '20' }]}>
+            <Text style={[styles.profitTrendText, { color: profit.netProfit >= 0 ? colors.success : colors.error }]}>
+              {profit.netProfit >= 0 ? '▲ Profit' : '▼ Loss'}
+            </Text>
+          </View>
+        </View>
         <Text style={[styles.profitValue, { color: profit.netProfit >= 0 ? colors.success : colors.error }]}>
-          {formatCurrency(profit.netProfit)}
+          {formatCurrency(Math.abs(profit.netProfit))}
         </Text>
         <View style={styles.profitMeta}>
-          <Text style={styles.profitMetaText}>Income: {formatCurrency(profit.totalIncome)}  |  Expenses: {formatCurrency(profit.totalExpense)}</Text>
+          <View style={styles.profitMetaItem}>
+            <Text style={styles.profitMetaLabel}>Total Income</Text>
+            <Text style={styles.profitMetaValue}>{formatCurrency(profit.totalIncome)}</Text>
+          </View>
+          <View style={styles.profitMetaDivider} />
+          <View style={styles.profitMetaItem}>
+            <Text style={styles.profitMetaLabel}>Total Expenses</Text>
+            <Text style={styles.profitMetaValue}>{formatCurrency(profit.totalExpense)}</Text>
+          </View>
         </View>
-        <View style={styles.periodRow}>
-          <View style={styles.periodItem}>
-            <Text style={styles.periodLabel}>Today</Text>
-            <Text style={[styles.periodValue, { color: profit.todayProfit >= 0 ? colors.success : colors.error }]}>{formatCurrency(profit.todayProfit)}</Text>
-          </View>
-          <View style={styles.periodDivider} />
-          <View style={styles.periodItem}>
-            <Text style={styles.periodLabel}>This Month</Text>
-            <Text style={[styles.periodValue, { color: profit.monthlyProfit >= 0 ? colors.success : colors.error }]}>{formatCurrency(profit.monthlyProfit)}</Text>
-          </View>
-          <View style={styles.periodDivider} />
-          <View style={styles.periodItem}>
-            <Text style={styles.periodLabel}>This Year</Text>
-            <Text style={[styles.periodValue, { color: profit.yearlyProfit >= 0 ? colors.success : colors.error }]}>{formatCurrency(profit.yearlyProfit)}</Text>
-          </View>
+      </View>
+
+      <View style={styles.periodRow}>
+        <View style={styles.periodCard}>
+          <Text style={styles.periodValueToday}>{formatCurrency(profit.todayProfit)}</Text>
+          <Text style={styles.periodLabel}>Today</Text>
+        </View>
+        <View style={styles.periodCard}>
+          <Text style={[styles.periodValueMonth, { color: profit.monthlyProfit >= 0 ? colors.success : colors.error }]}>{formatCurrency(profit.monthlyProfit)}</Text>
+          <Text style={styles.periodLabel}>This Month</Text>
+        </View>
+        <View style={styles.periodCard}>
+          <Text style={[styles.periodValueYear, { color: profit.yearlyProfit >= 0 ? colors.success : colors.error }]}>{formatCurrency(profit.yearlyProfit)}</Text>
+          <Text style={styles.periodLabel}>This Year</Text>
         </View>
       </View>
 
@@ -272,21 +288,32 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 48, marginBottom: 16 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'center' },
   emptySub: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+  headerSection: { marginBottom: 16 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   pageTitle: { fontSize: 24, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
   pageSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   currencyBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm },
   currencyBtnText: { fontSize: 18, fontWeight: '800', color: colors.primary },
-  profitBanner: { backgroundColor: colors.surface, borderRadius: borderRadius.xl, padding: 20, marginBottom: 12, alignItems: 'center', borderWidth: 1, borderColor: colors.borderLight, ...shadows.md },
-  profitLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 1, marginBottom: 4 },
-  profitValue: { fontSize: 36, fontWeight: '800', letterSpacing: -1 },
-  profitMeta: { flexDirection: 'row', marginTop: 8 },
-  profitMetaText: { fontSize: 12, color: colors.textSecondary, fontWeight: '500' },
-  periodRow: { flexDirection: 'row', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.borderLight },
-  periodItem: { flex: 1, alignItems: 'center' },
-  periodLabel: { fontSize: 10, fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 2 },
-  periodValue: { fontSize: 14, fontWeight: '800' },
-  periodDivider: { width: 1, backgroundColor: colors.borderLight },
+  profitBanner: { backgroundColor: colors.surface, borderRadius: borderRadius.xl, padding: 20, marginBottom: 12, borderWidth: 1, borderColor: colors.borderLight, ...shadows.md },
+  profitTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  profitLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 1 },
+  profitTrendBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 },
+  profitTrendText: { fontSize: 11, fontWeight: '800' },
+  profitValue: { fontSize: 36, fontWeight: '800', letterSpacing: -1, marginBottom: 12 },
+  profitMeta: { flexDirection: 'row', paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.borderLight },
+  profitMetaItem: { flex: 1, alignItems: 'center' },
+  profitMetaLabel: { fontSize: 10, fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 },
+  profitMetaValue: { fontSize: 16, fontWeight: '800', color: colors.text },
+  profitMetaDivider: { width: 1, backgroundColor: colors.borderLight },
+  periodRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  periodCard: {
+    flex: 1, backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: 14,
+    alignItems: 'center', borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm,
+  },
+  periodLabel: { fontSize: 10, fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 4 },
+  periodValueToday: { fontSize: 16, fontWeight: '800', color: colors.primary },
+  periodValueMonth: { fontSize: 16, fontWeight: '800' },
+  periodValueYear: { fontSize: 16, fontWeight: '800' },
   chartCard: { backgroundColor: colors.surface, borderRadius: borderRadius.xl, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.borderLight, ...shadows.sm },
   chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   chartTitle: { fontSize: 14, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },

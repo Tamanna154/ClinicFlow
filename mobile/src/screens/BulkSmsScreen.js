@@ -12,6 +12,7 @@ export default function BulkSmsScreen() {
   const [patients, setPatients] = useState([]);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [message, setMessage] = useState('');
+  const [sendMode, setSendMode] = useState('SMS');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -40,8 +41,13 @@ export default function BulkSmsScreen() {
     setSending(true);
     try {
       const phones = patients.filter(p => selectedIds.has(p.id)).map(p => p.phone).filter(Boolean);
-      const result = await smsApi.sendBulk(phones, message.trim());
-      Alert.alert('SMS Sent', `Message sent to ${result.total} patient(s)`);
+      if (sendMode === 'SMS') {
+        const result = await smsApi.sendBulk(phones, message.trim());
+        Alert.alert('✅ SMS Campaign Sent', `Message sent via SMS to ${result.total} patient(s)`);
+      } else {
+        const result = await smsApi.sendWhatsApp(phones, message.trim());
+        Alert.alert('✅ WhatsApp Campaign Sent', `Message sent via WhatsApp to ${result.total} patient(s)`);
+      }
       setSelectedIds(new Set());
       setMessage('');
     } catch (e) { Alert.alert('Error', e.message); }
@@ -58,7 +64,14 @@ export default function BulkSmsScreen() {
         {/* Compose Message */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Compose Message</Text>
-          <Text style={styles.label}>SMS Message</Text>
+          <View style={styles.modeRow}>
+            <TouchableOpacity style={[styles.modeBtn, sendMode === 'SMS' && styles.modeBtnActive]} onPress={() => setSendMode('SMS')}>
+              <Text style={[styles.modeBtnText, sendMode === 'SMS' && styles.modeBtnTextActive]}>📱 SMS</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.modeBtn, sendMode === 'WHATSAPP' && styles.modeBtnActive]} onPress={() => setSendMode('WHATSAPP')}>
+              <Text style={[styles.modeBtnText, sendMode === 'WHATSAPP' && styles.modeBtnTextActive]}>💬 WhatsApp</Text>
+            </TouchableOpacity>
+          </View>
           <TextInput
             style={[styles.input, styles.messageInput]}
             value={message}
@@ -98,8 +111,8 @@ export default function BulkSmsScreen() {
           })}
         </View>
 
-        <TouchableOpacity style={[styles.sendBtn, sending && { opacity: 0.6 }]} onPress={handleSend} disabled={sending}>
-          {sending ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.sendBtnText}>Send SMS to {selectedIds.size} patient(s)</Text>}
+        <TouchableOpacity style={[styles.sendBtn, sending && { opacity: 0.6 }, sendMode === 'WHATSAPP' && { backgroundColor: '#25D366' }]} onPress={handleSend} disabled={sending}>
+          {sending ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.sendBtnText}>Send {sendMode} to {selectedIds.size} patient(s)</Text>}
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -115,6 +128,11 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 },
   input: { backgroundColor: colors.bg, borderRadius: borderRadius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.text, fontWeight: '500' },
   messageInput: { minHeight: 100, textAlignVertical: 'top' },
+  modeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  modeBtn: { flex: 1, paddingVertical: 10, borderRadius: borderRadius.sm, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
+  modeBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  modeBtnText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  modeBtnTextActive: { color: '#FFFFFF' },
   charCount: { alignItems: 'flex-end', marginTop: 4 },
   charCountText: { fontSize: 11, color: colors.textMuted },
   selHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

@@ -42,6 +42,9 @@ public class Consultation {
     @Column(name = "blood_pressure", length = 20)
     private String bloodPressure;
 
+    @Column(name = "blood_sugar", length = 20)
+    private String bloodSugar;
+
     @Column(name = "pulse_rate")
     private Integer pulseRate;
 

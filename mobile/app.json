@@ -20,8 +20,13 @@
       },
       "package": "com.clinicflow.patientmanager"
     },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
     "plugins": [
       "expo-asset",
+      "expo-notifications",
       [
         "expo-build-properties",
         {

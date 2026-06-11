@@ -22,4 +22,6 @@ public class ExpenseRequest {
     private String description;
 
     private OffsetDateTime expenseDate;
+
+    private String billImagePath;
 }

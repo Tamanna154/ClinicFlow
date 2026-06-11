@@ -28,6 +28,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByDoctorIdAndAppointmentDateAndStartTimeLessThanEqualAndEndTimeGreaterThanEqual(
             Long doctorId, LocalDate date, LocalTime endTime, LocalTime startTime);
 
+    long countByDoctorId(Long doctorId);
+
     long countByDoctorIdAndAppointmentDateAndStatusNot(
             Long doctorId, LocalDate date, String status);
 

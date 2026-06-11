@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { staffApi } from '../api/staffApi';
+import { useSettings } from '../context/SettingsContext';
 import { colors, borderRadius, shadows } from '../theme';
 
 export default function StaffListScreen({ navigation }) {
@@ -12,6 +13,7 @@ export default function StaffListScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  const { formatCurrency } = useSettings();
 
   const fetchStaff = async (isRefresh = false) => {
     try {
@@ -76,6 +78,8 @@ export default function StaffListScreen({ navigation }) {
               {isExpanded && (
                 <View style={styles.detailsSection}>
                   <View style={styles.detailGrid}>
+                    {item.dutyTime && <DetailItem label="Duty Time" value={item.dutyTime} />}
+                    {item.fixedSalary !== undefined && <DetailItem label="Fixed Salary" value={formatCurrency(item.fixedSalary ?? 0)} />}
                     {item.phone && <DetailItem label="Phone" value={item.phone} />}
                     {item.age && <DetailItem label="Age" value={String(item.age)} />}
                     {item.email && <DetailItem label="Email" value={item.email} />}
@@ -89,15 +93,23 @@ export default function StaffListScreen({ navigation }) {
                     {item.notes && <DetailItem label="Notes" value={item.notes} />}
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.permissionsBtn}
-                    onPress={() => navigation.navigate('PermissionsScreen', { staffId: item.id, staffName: item.staffName })}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.permissionsBtnText}>
-                      Manage Permissions ({item.permissions?.length || 0})
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={styles.btnRow}>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.editBtn]}
+                      onPress={() => navigation.navigate('StaffForm', { staff: item })}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.editBtnText}>Edit Details</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.permissionsBtn]}
+                      onPress={() => navigation.navigate('PermissionsScreen', { staffId: item.id, staffName: item.staffName })}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.permissionsBtnText}>Permissions</Text>
+                    </TouchableOpacity>
+                  </View>
 
                   <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemove(item)} activeOpacity={0.7}>
                     <Text style={styles.removeBtnText}>Remove Staff</Text>
@@ -134,8 +146,6 @@ function DetailItem({ label, value }) {
   );
 }
 
-const STATUSBAR_H = Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 36);
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
@@ -160,10 +170,11 @@ const styles = StyleSheet.create({
   detailItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   detailLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, flex: 1 },
   detailValue: { fontSize: 13, fontWeight: '600', color: colors.text, flex: 2, textAlign: 'right' },
-  permissionsBtn: {
-    marginTop: 12, backgroundColor: colors.primary + '08', borderRadius: borderRadius.md,
-    paddingVertical: 11, alignItems: 'center', borderWidth: 1, borderColor: colors.primary + '15',
-  },
+  btnRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  actionBtn: { flex: 1, borderRadius: borderRadius.md, paddingVertical: 10, alignItems: 'center', borderWidth: 1 },
+  editBtn: { backgroundColor: colors.surface, borderColor: colors.primary, color: colors.primary },
+  editBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  permissionsBtn: { backgroundColor: colors.primary + '08', borderColor: colors.primary + '30' },
   permissionsBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
   removeBtn: { marginTop: 8, paddingVertical: 10, alignItems: 'center', borderRadius: borderRadius.md, backgroundColor: colors.errorLight, borderWidth: 1, borderColor: colors.error + '20' },
   removeBtnText: { fontSize: 13, fontWeight: '700', color: colors.error },

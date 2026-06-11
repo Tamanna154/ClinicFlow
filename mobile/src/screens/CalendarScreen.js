@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { doctorApi } from '../api/doctorApi';
 import { scheduleApi } from '../api/scheduleApi';
 import { colors, borderRadius, shadows } from '../theme';
+import { useAuth } from '../context/AuthContext';
 
 const VIEWS = ['daily', 'weekly', 'monthly'];
 const STATUSBAR_H = Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 36);
@@ -22,6 +23,7 @@ function formatDate(d) {
 }
 
 export default function CalendarScreen({ navigation }) {
+  const { user } = useAuth();
   const [doctors, setDoctors] = useState([]);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [view, setView] = useState('daily');
@@ -31,8 +33,22 @@ export default function CalendarScreen({ navigation }) {
   const [currentDate, setCurrentDate] = useState(todayStr());
 
   const fetchDoctors = async () => {
-    try { const data = await doctorApi.getAll(); setDoctors(data); if (data.length > 0 && !selectedDoctor) setSelectedDoctor(data[0]); }
-    catch (e) { Alert.alert('Error', 'Could not load doctors'); }
+    try {
+      const data = await doctorApi.getAll();
+      setDoctors(data);
+      if (user?.role === 'DOCTOR' && user?.doctorId) {
+        const myDoc = data.find(d => d.id === user.doctorId);
+        if (myDoc) {
+          setSelectedDoctor(myDoc);
+        } else {
+          setSelectedDoctor({ id: user.doctorId, name: user.name });
+        }
+      } else if (data.length > 0 && !selectedDoctor) {
+        setSelectedDoctor(data[0]);
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Could not load doctors');
+    }
   };
 
   const fetchSchedule = async (isRefresh = false) => {
@@ -96,7 +112,14 @@ export default function CalendarScreen({ navigation }) {
                 <View style={styles.slotInfo}>
                   {isBooked ? (
                     <>
-                      <Text style={styles.slotPatient} numberOfLines={1}>{entry.patientName || 'Booked'}</Text>
+                      <Text style={[
+                        styles.slotPatient,
+                        entry.status === 'COMPLETED' || entry.status === 'CONSULTATION_COMPLETED'
+                          ? styles.slotPatientDone
+                          : styles.slotPatientPending
+                      ]} numberOfLines={1}>
+                        {entry.patientName || 'Booked'}
+                      </Text>
                       <Text style={styles.slotEnd}>{entry.endTime}</Text>
                     </>
                   ) : (
@@ -145,22 +168,24 @@ export default function CalendarScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.doctorBar}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.doctorList}>
-          {doctors.map((doc) => (
-            <TouchableOpacity
-              key={doc.id}
-              style={[styles.doctorChip, selectedDoctor?.id === doc.id && styles.doctorChipActive]}
-              onPress={() => setSelectedDoctor(doc)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.doctorChipText, selectedDoctor?.id === doc.id && styles.doctorChipTextActive]}>
-                Dr. {doc.name?.split(' ')[0]}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      {user?.role !== 'DOCTOR' && (
+        <View style={styles.doctorBar}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.doctorList}>
+            {doctors.map((doc) => (
+              <TouchableOpacity
+                key={doc.id}
+                style={[styles.doctorChip, selectedDoctor?.id === doc.id && styles.doctorChipActive]}
+                onPress={() => setSelectedDoctor(doc)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.doctorChipText, selectedDoctor?.id === doc.id && styles.doctorChipTextActive]}>
+                  Dr. {doc.name?.split(' ')[0]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       <View style={styles.dateNav}>
         <TouchableOpacity onPress={() => navigateDate(-1)} style={styles.navBtn} activeOpacity={0.6}>
@@ -236,6 +261,8 @@ const styles = StyleSheet.create({
   slotBarBooked: { backgroundColor: colors.primary + '30' },
   slotInfo: { flex: 1, marginLeft: 12 },
   slotPatient: { fontSize: 14, fontWeight: '600', color: colors.text },
+  slotPatientPending: { color: colors.error, fontWeight: '700' },
+  slotPatientDone: { color: colors.info, fontWeight: '600' },
   slotEnd: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
   slotAvailable: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
   weekGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

@@ -45,4 +45,8 @@ public class CreateStaffRequest {
     private String emergencyContact;
 
     private String notes;
+
+    private String dutyTime;
+    private java.math.BigDecimal fixedSalary;
+    private Long doctorUserId;
 }

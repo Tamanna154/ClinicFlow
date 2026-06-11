@@ -20,7 +20,7 @@ public class ExpenseController {
     private final ExpenseService expenseService;
 
     @PostMapping
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ExpenseResponse> createExpense(@Valid @RequestBody ExpenseRequest request) {
         JwtUserDetails user = (JwtUserDetails) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
@@ -28,14 +28,25 @@ public class ExpenseController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('DOCTOR', 'RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'RECEPTIONIST', 'CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<ExpenseResponse>> getAllExpenses() {
         return ResponseEntity.ok(expenseService.getAllExpenses());
     }
 
     @GetMapping("/profit")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'RECEPTIONIST', 'CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ProfitResponse> getProfitReport() {
         return ResponseEntity.ok(expenseService.getProfitReport());
+    }
+
+    @PostMapping("/{id}/upload")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'CLINIC_ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<ExpenseResponse> uploadBillImage(
+            @PathVariable Long id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            jakarta.servlet.http.HttpServletRequest request) {
+        String baseUrl = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort();
+        ExpenseResponse response = expenseService.uploadBillImage(id, file, baseUrl);
+        return ResponseEntity.ok(response);
     }
 }

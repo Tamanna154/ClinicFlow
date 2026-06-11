@@ -1,25 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { staffApi } from '../api/staffApi';
+import { doctorApi } from '../api/doctorApi';
+import { useAuth } from '../context/AuthContext';
 import { colors, borderRadius, shadows, typography } from '../theme';
 
-const ROLES = ['RECEPTIONIST', 'ACCOUNTANT', 'NURSE', 'LAB_TECHNICIAN', 'PHARMACIST', 'CLEANER', 'OTHER'];
+const ROLES = ['RECEPTIONIST', 'ACCOUNTANT', 'INVENTORY_MANAGER', 'NURSE', 'LAB_TECHNICIAN', 'PHARMACIST', 'CLEANER', 'OTHER'];
 
-export default function StaffFormScreen({ navigation }) {
+export default function StaffFormScreen({ route, navigation }) {
+  const staff = route.params?.staff;
+  const isEdit = !!staff;
+
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [doctors, setDoctors] = useState([]);
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'CLINIC_ADMIN' || user?.role === 'SUPER_ADMIN';
 
   const [form, setForm] = useState({
     fullName: '', phone: '', age: '', email: '', address: '', roleTitle: 'RECEPTIONIST',
     aadharNumber: '', panNumber: '', bankAccountNo: '', bankName: '', ifscCode: '',
-    emergencyContact: '', notes: '',
+    emergencyContact: '', notes: '', dutyTime: '', fixedSalary: '', doctorUserId: '',
   });
 
-  const update = (key, value) => { setForm({ ...form, [key]: value }); if (errors[key]) setErrors({ ...errors, [key]: undefined }); };
+  useEffect(() => {
+    if (staff) {
+      setForm({
+        fullName: staff.staffName || '',
+        phone: staff.phone || '',
+        age: staff.age ? String(staff.age) : '',
+        email: staff.email || '',
+        address: staff.address || '',
+        roleTitle: staff.roleTitle || 'RECEPTIONIST',
+        aadharNumber: staff.aadharNumber || '',
+        panNumber: staff.panNumber || '',
+        bankAccountNo: staff.bankAccountNo || '',
+        bankName: staff.bankName || '',
+        ifscCode: staff.ifscCode || '',
+        emergencyContact: staff.emergencyContact || '',
+        notes: staff.notes || '',
+        dutyTime: staff.dutyTime || '',
+        fixedSalary: staff.fixedSalary ? String(staff.fixedSalary) : '',
+        doctorUserId: staff.doctorUserId ? String(staff.doctorUserId) : '',
+      });
+    }
+  }, [staff]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      doctorApi.getAll()
+        .then(setDoctors)
+        .catch(err => console.log('Failed to fetch doctors', err));
+    }
+  }, [isAdmin]);
+
+  const update = (key, value) => {
+    setForm({ ...form, [key]: value });
+    if (errors[key]) setErrors({ ...errors, [key]: undefined });
+  };
 
   const validate = () => {
     const errs = {};
@@ -28,6 +70,8 @@ export default function StaffFormScreen({ navigation }) {
     else if (form.phone.replace(/\D/g, '').length < 10) errs.phone = 'Must be at least 10 digits';
     if (form.age) { const n = parseInt(form.age, 10); if (isNaN(n) || n < 18 || n > 100) errs.age = 'Must be 18–100'; }
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = 'Invalid email';
+    if (form.fixedSalary) { const f = parseFloat(form.fixedSalary); if (isNaN(f) || f < 0) errs.fixedSalary = 'Must be positive'; }
+    if (isAdmin && !isEdit && !form.doctorUserId) { errs.doctorUserId = 'Please select a doctor to assign'; }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -35,27 +79,42 @@ export default function StaffFormScreen({ navigation }) {
   const handleSave = async () => {
     if (!validate()) { Alert.alert('Validation Error', 'Fix highlighted fields.'); return; }
     setSaving(true);
+    
+    const payload = {
+      fullName: form.fullName.trim(),
+      phone: form.phone.trim(),
+      age: form.age ? parseInt(form.age, 10) : null,
+      email: form.email.trim() || null,
+      address: form.address.trim() || null,
+      roleTitle: form.roleTitle,
+      aadharNumber: form.aadharNumber.trim() || null,
+      panNumber: form.panNumber.trim() || null,
+      bankAccountNo: form.bankAccountNo.trim() || null,
+      bankName: form.bankName.trim() || null,
+      ifscCode: form.ifscCode.trim() || null,
+      emergencyContact: form.emergencyContact.trim() || null,
+      notes: form.notes.trim() || null,
+      dutyTime: form.dutyTime.trim() || null,
+      fixedSalary: form.fixedSalary ? parseFloat(form.fixedSalary) : null,
+      doctorUserId: form.doctorUserId ? parseInt(form.doctorUserId, 10) : null,
+    };
+
     try {
-      await staffApi.createWithDetails({
-        fullName: form.fullName.trim(),
-        phone: form.phone.trim(),
-        age: form.age ? parseInt(form.age, 10) : null,
-        email: form.email.trim() || null,
-        address: form.address.trim() || null,
-        roleTitle: form.roleTitle,
-        aadharNumber: form.aadharNumber.trim() || null,
-        panNumber: form.panNumber.trim() || null,
-        bankAccountNo: form.bankAccountNo.trim() || null,
-        bankName: form.bankName.trim() || null,
-        ifscCode: form.ifscCode.trim() || null,
-        emergencyContact: form.emergencyContact.trim() || null,
-        notes: form.notes.trim() || null,
-      });
-      Alert.alert('Success', 'Staff member created. Default password: staff123', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      if (isEdit) {
+        await staffApi.update(staff.id, payload);
+        Alert.alert('Success', 'Staff details updated successfully.', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        const res = await staffApi.createWithDetails(payload);
+        Alert.alert(
+          '🎉 Staff Added',
+          `━━━━━━━━━━━━━━━━━━━━━━━\n  LOGIN CREDENTIALS\n━━━━━━━━━━━━━━━━━━━━━━━\n\n  👤 Username: ${res.staffUsername}\n  🔑 Password: ${res.tempPassword}\n\n━━━━━━━━━━━━━━━━━━━━━━━\n\n  📌 Format: role.firstname.lastname\n  🔐 Change password after first login.\n\n  SMS sent to staff's phone.`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      }
     } catch (err) {
-      Alert.alert('Error', err.message || 'Could not create staff.');
+      Alert.alert('Error', err.message || 'Could not save staff.');
     } finally {
       setSaving(false);
     }
@@ -67,14 +126,14 @@ export default function StaffFormScreen({ navigation }) {
         <View style={styles.stepIndicator}>
           <StepDot number={1} label="Personal" active={step === 1} done={step > 1} />
           <View style={styles.stepLine} />
-          <StepDot number={2} label="Identity" active={step === 2} done={step > 2} />
+          <StepDot number={2} label="Identity/Duty" active={step === 2} done={step > 2} />
           <View style={styles.stepLine} />
           <StepDot number={3} label="Bank" active={step === 3} done={step > 3} />
         </View>
 
         {step === 1 && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Personal Details</Text>
+            <Text style={styles.sectionTitle}>{isEdit ? 'Edit' : 'Personal'} Details</Text>
             <Field label="Full Name" required error={errors.fullName}>
               <TextInput style={[styles.input, errors.fullName && styles.inputError]} value={form.fullName} onChangeText={(v) => update('fullName', v)} placeholder="Full name" placeholderTextColor={colors.textMuted} />
             </Field>
@@ -102,14 +161,41 @@ export default function StaffFormScreen({ navigation }) {
               </View>
             </Field>
             <TouchableOpacity style={styles.nextBtn} onPress={() => setStep(2)} activeOpacity={0.85}>
-              <Text style={styles.nextBtnText}>Next → Identity</Text>
+              <Text style={styles.nextBtnText}>Next → Duty/Identity</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {step === 2 && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Identity Documents</Text>
+            <Text style={styles.sectionTitle}>Duty & Identity Details</Text>
+            
+            <Field label="Duty Hours / Timing">
+              <TextInput style={styles.input} value={form.dutyTime} onChangeText={(v) => update('dutyTime', v)} placeholder="e.g. 9:00 AM - 5:00 PM" placeholderTextColor={colors.textMuted} />
+            </Field>
+
+            <Field label="Fixed Income / Base Salary" error={errors.fixedSalary}>
+              <TextInput style={[styles.input, errors.fixedSalary && styles.inputError]} value={form.fixedSalary} onChangeText={(v) => update('fixedSalary', v)} placeholder="e.g. 20000" placeholderTextColor={colors.textMuted} keyboardType="numeric" />
+            </Field>
+
+            {isAdmin && !isEdit && (
+              <Field label="Assign Doctor" required error={errors.doctorUserId}>
+                <View style={styles.pillRow}>
+                  {doctors.map((doc) => (
+                    <TouchableOpacity
+                      key={doc.id}
+                      style={[styles.pill, form.doctorUserId === String(doc.id) && styles.pillActive]}
+                      onPress={() => update('doctorUserId', String(doc.id))}
+                    >
+                      <Text style={[styles.pillText, form.doctorUserId === String(doc.id) && styles.pillTextActive]}>
+                        Dr. {doc.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Field>
+            )}
+
             <Field label="Aadhar Number">
               <TextInput style={styles.input} value={form.aadharNumber} onChangeText={(v) => update('aadharNumber', v)} placeholder="12-digit Aadhar number" placeholderTextColor={colors.textMuted} keyboardType="number-pad" maxLength={14} />
             </Field>
@@ -146,7 +232,7 @@ export default function StaffFormScreen({ navigation }) {
               <TextInput style={styles.input} value={form.ifscCode} onChangeText={(v) => update('ifscCode', v)} placeholder="e.g. SBIN0001234" placeholderTextColor={colors.textMuted} autoCapitalize="characters" />
             </Field>
             <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
-              {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveBtnText}>Create Staff Member</Text>}
+              {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveBtnText}>{isEdit ? 'Update Details' : 'Create Staff Member'}</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={[styles.backBtn, { marginTop: 10, alignSelf: 'center' }]} onPress={() => setStep(2)} activeOpacity={0.85}>
               <Text style={styles.backBtnText}>← Back to Identity</Text>
@@ -199,7 +285,7 @@ const styles = StyleSheet.create({
   inputError: { borderColor: colors.error, backgroundColor: colors.errorLight },
   errorText: { color: colors.error, fontSize: 11, marginTop: 2, fontWeight: '600' },
   row: { flexDirection: 'row' },
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 4 },
   pill: { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm, paddingHorizontal: 10, paddingVertical: 7 },
   pillActive: { backgroundColor: colors.primary + '12', borderColor: colors.primary },
   pillText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },

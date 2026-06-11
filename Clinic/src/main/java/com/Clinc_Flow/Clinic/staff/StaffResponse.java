@@ -12,6 +12,7 @@ public class StaffResponse {
     private String staffUsername;
     private List<String> permissions;
     private OffsetDateTime createdAt;
+    private String tempPassword;
 
     private String phone;
     private Integer age;
@@ -26,4 +27,8 @@ public class StaffResponse {
     private String emergencyContact;
     private String notes;
     private Boolean isActive;
+
+    private String dutyTime;
+    private java.math.BigDecimal fixedSalary;
+    private Long doctorUserId;
 }

@@ -30,4 +30,24 @@ export const expenseApi = {
     if (!res.ok) throw new Error('Failed to fetch profit report');
     return res.json();
   },
+
+  async uploadBill(expenseId, fileUri) {
+    const base = getApiBase();
+    const formData = new FormData();
+    const filename = fileUri.split('/').pop();
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image';
+    formData.append('file', { uri: fileUri, name: filename, type });
+
+    const res = await authFetch(`${base}/expenses/${expenseId}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      let msg = 'Failed to upload bill image';
+      try { const err = await res.json(); msg = err.error || msg; } catch (e) {}
+      throw new Error(msg);
+    }
+    return res.json();
+  },
 };

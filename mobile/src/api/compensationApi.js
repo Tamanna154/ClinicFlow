@@ -1,8 +1,8 @@
 import { authFetch } from './client';
 
 const getApiBase = async () => {
-  const { getApiBaseUrl } = await import('./apiBase');
-  return getApiBaseUrl();
+  const { getApiBase } = await import('./apiBase');
+  return getApiBase();
 };
 
 export const compensationApi = {

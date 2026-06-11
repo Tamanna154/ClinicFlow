@@ -100,5 +100,26 @@ public class ExpenseService {
                 .monthlyTrend(trends)
                 .expenseBreakdown(expenseBreakdown)
                 .build();
-    }
+     }
+
+     @Transactional
+     public ExpenseResponse uploadBillImage(Long id, org.springframework.web.multipart.MultipartFile file, String baseUrl) {
+         Expense expense = expenseRepository.findById(id)
+                 .orElseThrow(() -> new com.Clinc_Flow.Clinic.exception.ResourceNotFoundException("Expense", id));
+         try {
+             String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
+             java.nio.file.Path uploadPath = java.nio.file.Paths.get("uploads/expenses");
+             if (!java.nio.file.Files.exists(uploadPath)) {
+                 java.nio.file.Files.createDirectories(uploadPath);
+             }
+             java.nio.file.Path filePath = uploadPath.resolve(filename);
+             java.nio.file.Files.copy(file.getInputStream(), filePath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+             expense.setBillImagePath("expenses/" + filename);
+             expense = expenseRepository.save(expense);
+             return ExpenseResponse.fromEntity(expense, baseUrl);
+         } catch (java.io.IOException e) {
+             throw new RuntimeException("Failed to upload bill image", e);
+         }
+     }
 }
