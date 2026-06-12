@@ -24,7 +24,7 @@ export default function StaffFormScreen({ route, navigation }) {
   const [form, setForm] = useState({
     fullName: '', phone: '', age: '', email: '', address: '', roleTitle: 'RECEPTIONIST',
     aadharNumber: '', panNumber: '', bankAccountNo: '', bankName: '', ifscCode: '',
-    emergencyContact: '', notes: '', dutyTime: '', fixedSalary: '', doctorUserId: '',
+    emergencyContact: '', notes: '', dutyTime: '9:00 AM - 6:00 PM', fixedSalary: '', doctorUserId: '',
   });
 
   useEffect(() => {
@@ -114,7 +114,16 @@ export default function StaffFormScreen({ route, navigation }) {
         );
       }
     } catch (err) {
-      Alert.alert('Error', err.message || 'Could not save staff.');
+      const msg = err.message || '';
+      if (msg.includes('duplicate') || msg.includes('already exists')) {
+        Alert.alert('❌ Duplicate Entry', 'A staff member with this email or username already exists. Please use a different email.');
+      } else if (msg.includes('phone')) {
+        Alert.alert('❌ Invalid Phone', 'Please check the phone number. It may already be registered or invalid.');
+      } else if (msg.includes('network') || msg.includes('fetch')) {
+        Alert.alert('📡 Connection Error', 'Could not reach the server. Please check:\n\n1. Backend is running\n2. Server URL is correct in Settings\n3. Phone and laptop are on same WiFi');
+      } else {
+        Alert.alert('❌ Save Failed', msg || 'Could not save staff. Please try again or check your connection.');
+      }
     } finally {
       setSaving(false);
     }

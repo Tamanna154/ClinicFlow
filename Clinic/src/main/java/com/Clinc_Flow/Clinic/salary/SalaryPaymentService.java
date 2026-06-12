@@ -1,5 +1,6 @@
 package com.Clinc_Flow.Clinic.salary;
 
+import com.Clinc_Flow.Clinic.compensation.StaffCompensationRepository;
 import com.Clinc_Flow.Clinic.staff.DoctorStaff;
 import com.Clinc_Flow.Clinic.staff.DoctorStaffRepository;
 import com.Clinc_Flow.Clinic.staff.StaffDetails;
@@ -24,6 +25,7 @@ public class SalaryPaymentService {
     private final SalaryPaymentRepository salaryPaymentRepository;
     private final DoctorStaffRepository doctorStaffRepository;
     private final StaffDetailsRepository staffDetailsRepository;
+    private final StaffCompensationRepository staffCompensationRepository;
     private final UserRepository userRepository;
 
     @Transactional
@@ -34,8 +36,9 @@ public class SalaryPaymentService {
         StaffDetails details = staffDetailsRepository.findByDoctorStaffId(ds.getId())
                 .orElse(null);
 
-        BigDecimal fixedSalary = details != null && details.getFixedSalary() != null
-                ? details.getFixedSalary() : BigDecimal.ZERO;
+        BigDecimal fixedSalary = staffCompensationRepository.findByDoctorStaffId(ds.getId())
+                .map(c -> c.getFixedSalary() != null ? c.getFixedSalary() : BigDecimal.ZERO)
+                .orElse(BigDecimal.ZERO);
 
         SalaryPayment payment = SalaryPayment.builder()
                 .staffId(request.getStaffId())
@@ -53,14 +56,13 @@ public class SalaryPaymentService {
         if (details != null) {
             details.setLastPaymentDate(LocalDate.now());
             details.setLastPaymentAmount(request.getAmount());
-            details.setTotalPaid(details.getTotalPaid() != null
-                    ? details.getTotalPaid().add(request.getAmount())
-                    : request.getAmount());
-            details.setPendingSalary(fixedSalary.subtract(
-                    details.getTotalPaid() != null ? details.getTotalPaid() : BigDecimal.ZERO));
-            if (details.getPendingSalary().compareTo(BigDecimal.ZERO) < 0) {
-                details.setPendingSalary(BigDecimal.ZERO);
+            BigDecimal currentTotal = details.getTotalPaid() != null ? details.getTotalPaid() : BigDecimal.ZERO;
+            details.setTotalPaid(currentTotal.add(request.getAmount()));
+            BigDecimal pending = fixedSalary.subtract(details.getTotalPaid());
+            if (pending.compareTo(BigDecimal.ZERO) < 0) {
+                pending = BigDecimal.ZERO;
             }
+            details.setPendingSalary(pending);
             staffDetailsRepository.save(details);
         }
 
@@ -82,8 +84,8 @@ public class SalaryPaymentService {
         }
         return payments.stream().map(p -> {
             DoctorStaff ds = doctorStaffRepository.findById(p.getStaffId()).orElse(null);
-            StaffDetails details = ds != null ? staffDetailsRepository.findByDoctorStaffId(ds.getId()).orElse(null) : null;
-            return mapToResponse(p, ds, details);
+            StaffDetails sdetails = ds != null ? staffDetailsRepository.findByDoctorStaffId(ds.getId()).orElse(null) : null;
+            return mapToResponse(p, ds, sdetails);
         }).toList();
     }
 
@@ -91,8 +93,8 @@ public class SalaryPaymentService {
     public List<SalaryPaymentResponse> getPaymentHistory(Long staffId) {
         List<SalaryPayment> payments = salaryPaymentRepository.findByStaffIdOrderByPaymentDateDesc(staffId);
         DoctorStaff ds = doctorStaffRepository.findById(staffId).orElse(null);
-        StaffDetails details = ds != null ? staffDetailsRepository.findByDoctorStaffId(ds.getId()).orElse(null) : null;
-        return payments.stream().map(p -> mapToResponse(p, ds, details)).toList();
+        StaffDetails sdetails = ds != null ? staffDetailsRepository.findByDoctorStaffId(ds.getId()).orElse(null) : null;
+        return payments.stream().map(p -> mapToResponse(p, ds, sdetails)).toList();
     }
 
     private SalaryPaymentResponse mapToResponse(SalaryPayment payment, DoctorStaff ds, StaffDetails details) {
@@ -106,13 +108,16 @@ public class SalaryPaymentService {
             User user = userRepository.findById(ds.getStaffUserId()).orElse(null);
             if (user != null) {
                 staffName = user.getName() != null ? user.getName() : "";
-                staffRole = user.getRoleTitle() != null ? user.getRoleTitle() : user.getRole();
+                staffRole = details != null && details.getRoleTitle() != null
+                        ? details.getRoleTitle() : user.getRole().name();
+                fixedSalary = staffCompensationRepository.findByDoctorStaffId(ds.getId())
+                        .map(c -> c.getFixedSalary() != null ? c.getFixedSalary() : BigDecimal.ZERO)
+                        .orElse(BigDecimal.ZERO);
+                totalPaid = details != null && details.getTotalPaid() != null
+                        ? details.getTotalPaid() : BigDecimal.ZERO;
+                pendingSalary = details != null && details.getPendingSalary() != null
+                        ? details.getPendingSalary() : BigDecimal.ZERO;
             }
-        }
-        if (details != null) {
-            fixedSalary = details.getFixedSalary() != null ? details.getFixedSalary() : BigDecimal.ZERO;
-            totalPaid = details.getTotalPaid() != null ? details.getTotalPaid() : BigDecimal.ZERO;
-            pendingSalary = details.getPendingSalary() != null ? details.getPendingSalary() : BigDecimal.ZERO;
         }
 
         return SalaryPaymentResponse.builder()

@@ -176,6 +176,7 @@ public class AdminUserSeeder implements CommandLineRunner {
                             .age(30)
                             .gender("Male")
                             .address("123 Health Street, Clinic City")
+                            .archived(false)
                             .build();
                     return patientRepository.save(newPat);
                 });

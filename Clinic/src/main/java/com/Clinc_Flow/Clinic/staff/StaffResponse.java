@@ -1,6 +1,8 @@
 package com.Clinc_Flow.Clinic.staff;
 
 import lombok.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -29,6 +31,10 @@ public class StaffResponse {
     private Boolean isActive;
 
     private String dutyTime;
-    private java.math.BigDecimal fixedSalary;
+    private BigDecimal fixedSalary;
+    private BigDecimal totalPaid;
+    private BigDecimal pendingSalary;
+    private LocalDate lastPaymentDate;
+    private BigDecimal lastPaymentAmount;
     private Long doctorUserId;
 }

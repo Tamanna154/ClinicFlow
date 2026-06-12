@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
-  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
+  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { doctorApi } from '../api/doctorApi';
@@ -42,6 +42,41 @@ export default function AppointmentBookingScreen({ route, navigation }) {
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [startTimePickerVisible, setStartTimePickerVisible] = useState(false);
   const [endTimePickerVisible, setEndTimePickerVisible] = useState(false);
+  const [newPatientModal, setNewPatientModal] = useState(false);
+  const [newPatient, setNewPatient] = useState({ name: '', phone: '', email: '', age: '', gender: 'Male' });
+  const [creatingPatient, setCreatingPatient] = useState(false);
+
+  const handleCreatePatient = async () => {
+    if (!newPatient.name.trim() || !newPatient.phone.trim()) {
+      Alert.alert('Required', 'Patient name and phone are required.');
+      return;
+    }
+    setCreatingPatient(true);
+    try {
+      const res = await patientApi.create({
+        name: newPatient.name.trim(),
+        phone: newPatient.phone.trim(),
+        email: newPatient.email.trim() || null,
+        age: newPatient.age ? parseInt(newPatient.age) : null,
+        gender: newPatient.gender,
+      });
+      const newP = Array.isArray(res) ? res[0] : res;
+      selectPatient(newP);
+      setNewPatientModal(false);
+      setNewPatient({ name: '', phone: '', email: '', age: '', gender: 'Male' });
+      Alert.alert(
+        '✅ Patient Created',
+        `Patient ${newP.name} created successfully!\n\nUsername: ${newP.tempUsername || 'Check records'}\nPassword: ${newP.tempPassword || 'SMS sent to phone'}\n\nLogin credentials have been sent via SMS and WhatsApp.`,
+        [{ text: 'Proceed to Book Appointment' }]
+      );
+      const updatedPatients = await patientApi.getAll().catch(() => []);
+      if (Array.isArray(updatedPatients)) setPatients(updatedPatients);
+    } catch (err) {
+      Alert.alert('❌ Error', err.message || 'Could not create patient.');
+    } finally {
+      setCreatingPatient(false);
+    }
+  };
 
   useFocusEffect(useCallback(() => {
     (async () => {
@@ -228,6 +263,16 @@ export default function AppointmentBookingScreen({ route, navigation }) {
                 <Text style={{ fontSize: 12, color: colors.textMuted }}>No matching patients found.</Text>
               </View>
             )}
+            {patientSearch.trim() && filteredPatients.length === 0 && (
+              <TouchableOpacity style={styles.createPatientBtn} onPress={() => setNewPatientModal(true)} activeOpacity={0.7}>
+                <Text style={styles.createPatientBtnIcon}>➕</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.createPatientBtnText}>Create New Patient</Text>
+                  <Text style={styles.createPatientBtnSub}>"{patientSearch}" will be used as name</Text>
+                </View>
+                <Text style={styles.createPatientBtnArrow}>›</Text>
+              </TouchableOpacity>
+            )}
             {errors.patientId && <Text style={styles.errorText}>{errors.patientId}</Text>}
           </View>
         </View>
@@ -390,6 +435,55 @@ export default function AppointmentBookingScreen({ route, navigation }) {
         <View style={{ height: 40 }} />
       </ScrollView>
 
+      {/* Create New Patient Modal */}
+      <Modal visible={newPatientModal} transparent animationType="slide" onRequestClose={() => setNewPatientModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>➕ New Patient</Text>
+              <TouchableOpacity onPress={() => setNewPatientModal(false)} style={styles.modalCloseBtn}>
+                <Text style={styles.modalCloseX}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.newPatInfo}>Patient "{patientSearch}" not found. Create a new record.</Text>
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Full Name *</Text>
+              <TextInput style={styles.formInput} value={newPatient.name} onChangeText={(v) => setNewPatient({...newPatient, name: v})} placeholder="Patient name" placeholderTextColor={colors.textMuted} />
+            </View>
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Phone *</Text>
+              <TextInput style={styles.formInput} value={newPatient.phone} onChangeText={(v) => setNewPatient({...newPatient, phone: v})} placeholder="Phone number" placeholderTextColor={colors.textMuted} keyboardType="phone-pad" />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={[styles.formGroup, { flex: 1 }]}>
+                <Text style={styles.formLabel}>Email</Text>
+                <TextInput style={styles.formInput} value={newPatient.email} onChangeText={(v) => setNewPatient({...newPatient, email: v})} placeholder="Email" placeholderTextColor={colors.textMuted} keyboardType="email-address" autoCapitalize="none" />
+              </View>
+              <View style={[styles.formGroup, { flex: 1 }]}>
+                <Text style={styles.formLabel}>Age</Text>
+                <TextInput style={styles.formInput} value={newPatient.age} onChangeText={(v) => setNewPatient({...newPatient, age: v})} placeholder="Age" placeholderTextColor={colors.textMuted} keyboardType="number-pad" />
+              </View>
+            </View>
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Gender</Text>
+              <View style={styles.genderRow}>
+                {['Male', 'Female', 'Other'].map(g => {
+                  const active = newPatient.gender === g;
+                  return (
+                    <TouchableOpacity key={g} style={[styles.genderChip, active && styles.genderChipActive]} onPress={() => setNewPatient({...newPatient, gender: g})} activeOpacity={0.7}>
+                      <Text style={[styles.genderChipText, active && styles.genderChipTextActive]}>{g}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+            <TouchableOpacity style={[styles.createPatBtn, creatingPatient && { opacity: 0.6 }]} onPress={handleCreatePatient} disabled={creatingPatient} activeOpacity={0.85}>
+              {creatingPatient ? <ActivityIndicator color="#FFF" /> : <Text style={styles.createPatBtnText}>✅ Create Patient & Book Appointment</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <DatePickerModal
         visible={datePickerVisible}
         onClose={() => setDatePickerVisible(false)}
@@ -495,4 +589,26 @@ const styles = StyleSheet.create({
   bookBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   footerNote: { fontSize: 11, color: colors.textMuted, textAlign: 'center', marginTop: 10, fontStyle: 'italic' },
   noPatientMsg: { paddingVertical: 8, alignItems: 'center' },
+  createPatientBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '08', borderRadius: 12, padding: 12, marginTop: 6, borderWidth: 1, borderColor: colors.primary + '30', borderStyle: 'dashed' },
+  createPatientBtnIcon: { fontSize: 18, marginRight: 10 },
+  createPatientBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  createPatientBtnSub: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
+  createPatientBtnArrow: { fontSize: 18, color: colors.primary, fontWeight: '300' },
+  modalOverlay: { flex: 1, backgroundColor: '#00000050', justifyContent: 'flex-end' },
+  modalContainer: { backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 30, maxHeight: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
+  modalCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
+  modalCloseX: { fontSize: 14, color: colors.textMuted, fontWeight: '700' },
+  newPatInfo: { fontSize: 12, color: colors.textMuted, marginBottom: 16, backgroundColor: colors.infoLight, padding: 10, borderRadius: 8, lineHeight: 18 },
+  formGroup: { marginBottom: 12 },
+  formLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 4 },
+  formInput: { backgroundColor: colors.bg, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.text, fontWeight: '500' },
+  genderRow: { flexDirection: 'row', gap: 8 },
+  genderChip: { flex: 1, backgroundColor: colors.bg, borderRadius: 8, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
+  genderChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  genderChipText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  genderChipTextActive: { color: '#FFFFFF' },
+  createPatBtn: { backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 8, ...shadows.md },
+  createPatBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
 });

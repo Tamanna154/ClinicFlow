@@ -2,6 +2,8 @@ package com.Clinc_Flow.Clinic.staff;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -59,6 +61,18 @@ public class StaffDetails {
 
     @Column(name = "duty_time", length = 100)
     private String dutyTime;
+
+    @Column(name = "last_payment_date")
+    private LocalDate lastPaymentDate;
+
+    @Column(name = "last_payment_amount", precision = 12, scale = 2)
+    private BigDecimal lastPaymentAmount;
+
+    @Column(name = "total_paid", precision = 12, scale = 2)
+    private BigDecimal totalPaid;
+
+    @Column(name = "pending_salary", precision = 12, scale = 2)
+    private BigDecimal pendingSalary;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

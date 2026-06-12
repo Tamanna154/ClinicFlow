@@ -83,9 +83,17 @@ export default function ServerSettingsScreen({ navigation }) {
       if (result.ok) {
         Alert.alert('Connected', `✓ Server reachable at ${cleanUrl} (HTTP ${result.status})\n\nSave and try logging in.`);
       } else if (result.status === 0) {
-        const knownIps = ['192.168.1.100', '192.168.1.101', '192.168.0.100', '192.168.0.101', '192.168.29.100', '10.0.2.2', '10.151.137.83', '10.151.137.1', 'localhost'];
+        const knownIps = ['10.151.137.83', '192.168.1.100', '192.168.1.101', '192.168.0.100', '10.0.2.2', 'localhost'];
         const suggestions = knownIps.map(ip => `http://${ip}:8080/api`).join('\n');
-        Alert.alert('Connection Failed', `${cleanUrl} is not reachable.\n\nTry pasting one of these URLs:\n${suggestions}\n\nAlso: verify backend is running and firewall allows port 8080.`);
+        Alert.alert('Connection Failed', 
+          `Server not reachable at ${cleanUrl}\n\n` +
+          `✅ Verify backend is running:\n` +
+          `   cd Clinic && .\\mvnw spring-boot:run\n\n` +
+          `✅ Try these URLs:\n${suggestions}\n\n` +
+          `✅ Run this on laptop (Admin):\n` +
+          `   netsh advfirewall firewall add rule name="ClinicFlow" dir=in action=allow protocol=TCP localport=8080\n\n` +
+          `✅ Both devices must be on the SAME WiFi\n` +
+          `✅ USB connection alone won't work`);
       } else {
         Alert.alert('Wrong Endpoint', `Server at ${cleanUrl} responded with HTTP ${result.status}, but the API endpoint was not found.\n\nMake sure the URL includes /api (e.g. http://10.0.2.2:8080/api)`);
       }

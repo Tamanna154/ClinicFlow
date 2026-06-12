@@ -6,6 +6,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { staffApi } from '../api/staffApi';
 import { doctorApi } from '../api/doctorApi';
+import { useAuth } from '../context/AuthContext';
 import { colors, borderRadius, shadows } from '../theme';
 
 const STAFF_TILES = [
@@ -35,6 +36,9 @@ export default function StaffOverviewScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTile, setSelectedTile] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const { logout } = useAuth();
+
+  const handleLogout = () => { logout(); };
 
   const fetchData = useCallback(async (isRefresh) => {
     try {
@@ -79,8 +83,15 @@ export default function StaffOverviewScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Staff Overview</Text>
-        <Text style={styles.headerSub}>{(allDoctors.length + allStaff.length)} team members</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View>
+            <Text style={styles.headerTitle}>Staff Overview</Text>
+            <Text style={styles.headerSub}>{(allDoctors.length + allStaff.length)} team members</Text>
+          </View>
+          <TouchableOpacity onPress={handleLogout} style={styles.signoutBtn} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={styles.signoutIcon}>🚪</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -273,6 +284,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.5 },
   headerSub: { fontSize: 13, color: '#FFFFFFAA', marginTop: 4 },
+  signoutBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#FFFFFF25', justifyContent: 'center', alignItems: 'center' },
+  signoutIcon: { fontSize: 16 },
 
   statsBanner: {
     flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 16,

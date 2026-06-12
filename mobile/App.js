@@ -451,8 +451,8 @@ function AdminScheduleStack() {
 
 function SalaryStack() {
   return (
-    <Stack.Navigator screenOptions={{ ...headerOpts }}>
-      <Stack.Screen name="SalaryMain" component={SalaryScreen} options={{ headerShown: false }} />
+    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
+      <Stack.Screen name="SalaryMain" component={SalaryScreen} options={{ title: 'Salary Management' }} />
     </Stack.Navigator>
   );
 }

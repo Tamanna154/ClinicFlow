@@ -45,5 +45,5 @@ BEGIN
 END $$;
 
 -- Update existing staff_details to have default values
-UPDATE staff_details SET pending_salary = COALESCE(fixed_salary, 0) WHERE pending_salary IS NULL;
+UPDATE staff_details SET pending_salary = 0 WHERE pending_salary IS NULL;
 UPDATE staff_details SET total_paid = 0 WHERE total_paid IS NULL;

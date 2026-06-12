@@ -83,6 +83,15 @@ export default function AppointmentDetailScreen({ route, navigation }) {
   };
 
   const handleStartConsultation = () => {
+    const userRole = user?.role;
+    if (userRole === 'CLINIC_ADMIN' || userRole === 'SUPER_ADMIN') {
+      Alert.alert(
+        '🔒 Restricted Action',
+        'Consultations can only be started by a Doctor.\n\nAs an Admin, you can:\n• View appointment details\n• Manage schedules\n• Generate reports\n\nPlease login with a Doctor account to start consultations.',
+        [{ text: 'Got It' }]
+      );
+      return;
+    }
     navigation.navigate('Consultation', {
       appointment,
       isOnline: appointment.isOnline,

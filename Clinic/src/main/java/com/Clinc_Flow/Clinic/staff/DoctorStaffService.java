@@ -3,6 +3,7 @@ package com.Clinc_Flow.Clinic.staff;
 import com.Clinc_Flow.Clinic.user.User;
 import com.Clinc_Flow.Clinic.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Arrays;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DoctorStaffService {
@@ -65,6 +67,10 @@ public class DoctorStaffService {
             response.setIsActive(d.getIsActive());
             response.setNotes(d.getNotes());
             response.setDutyTime(d.getDutyTime());
+            response.setTotalPaid(d.getTotalPaid());
+            response.setPendingSalary(d.getPendingSalary());
+            response.setLastPaymentDate(d.getLastPaymentDate());
+            response.setLastPaymentAmount(d.getLastPaymentAmount());
         });
         staffCompensationRepository.findByDoctorStaffId(ds.getId()).ifPresent(c -> {
             response.setFixedSalary(c.getFixedSalary());
