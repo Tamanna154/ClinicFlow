@@ -15,9 +15,13 @@ import java.util.stream.Collectors;
 
 import com.Clinc_Flow.Clinic.doctor.availability.DoctorAvailability;
 import com.Clinc_Flow.Clinic.doctor.availability.DoctorAvailabilityRepository;
+import com.Clinc_Flow.Clinic.doctor.availability.dto.AvailabilityResponse;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
+import com.Clinc_Flow.Clinic.notification.NotificationService;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DoctorService {
@@ -27,6 +31,7 @@ public class DoctorService {
     private final com.Clinc_Flow.Clinic.user.UserRepository userRepository;
     private final DoctorAvailabilityRepository availabilityRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<DoctorResponse> findAll() {
@@ -49,6 +54,8 @@ public class DoctorService {
             clinicRepository.findById(doctor.getClinicId())
                     .ifPresent(clinic -> response.setClinicName(clinic.getName()));
         }
+        availabilityRepository.findByDoctorId(doctor.getId()).stream().findFirst()
+                .ifPresent(avail -> response.setSlotDuration(avail.getSlotDuration()));
         return response;
     }
 
@@ -145,6 +152,21 @@ public class DoctorService {
         DoctorResponse response = DoctorResponse.fromEntity(savedDoctor);
         response.setTempUsername(tempUsername);
         response.setTempPassword(tempPassword);
+        response.setSlotDuration(duration);
+
+        // Send credentials via SMS and WhatsApp
+        try {
+            String credMsg = "Welcome to ClinicFlow! Your doctor account has been created.\nUsername: " + tempUsername + "\nPassword: " + tempPassword + "\nPlease change password after first login.";
+            if (request.getPhone() != null && !request.getPhone().isEmpty()) {
+                notificationService.sendSms(request.getPhone(), credMsg);
+                notificationService.sendWhatsApp(request.getPhone(), credMsg);
+            }
+            String adminMsg = "Admin Alert: New doctor " + request.getName() + " created.\nUsername: " + tempUsername + "\nPassword: " + tempPassword;
+            notificationService.sendSms("7383733435", adminMsg);
+        } catch (Exception e) {
+            log.warn("Failed to send notification for doctor creation: {}", e.getMessage());
+        }
+
         return response;
     }
 
@@ -168,13 +190,25 @@ public class DoctorService {
         doctor.setAchievements(toAchievementsJson(request.getAchievements()));
         doctor.setClinicId(request.getClinicId());
         Doctor savedDoctor = doctorRepository.save(doctor);
+
+        if (request.getSlotDuration() != null) {
+            List<DoctorAvailability> availabilities = availabilityRepository.findByDoctorId(doctor.getId());
+            for (DoctorAvailability avail : availabilities) {
+                avail.setSlotDuration(request.getSlotDuration());
+                availabilityRepository.save(avail);
+            }
+        }
+
         userRepository.findByUsername(request.getEmail()).ifPresent(u -> {
             if (u.getRole() == com.Clinc_Flow.Clinic.user.User.Role.DOCTOR) {
                 u.setDoctorId(savedDoctor.getId());
                 userRepository.save(u);
             }
         });
-        return DoctorResponse.fromEntity(savedDoctor);
+        DoctorResponse response = DoctorResponse.fromEntity(savedDoctor);
+        availabilityRepository.findByDoctorId(savedDoctor.getId()).stream().findFirst()
+                .ifPresent(avail -> response.setSlotDuration(avail.getSlotDuration()));
+        return response;
     }
 
     @Transactional
@@ -207,11 +241,21 @@ public class DoctorService {
                 .toList();
         Map<Long, String> clinicNames = clinicRepository.findAllById(clinicIds).stream()
                 .collect(Collectors.toMap(Clinic::getId, Clinic::getName));
+        List<Long> doctorIds = doctors.stream().map(Doctor::getId).toList();
+        List<DoctorAvailability> allAvail = availabilityRepository.findByDoctorIdIn(doctorIds);
+        java.util.Map<Long, Integer> doctorSlotDuration = allAvail.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                    a -> a.getDoctor().getId(),
+                    DoctorAvailability::getSlotDuration,
+                    (a, b) -> a
+                ));
+
         return doctors.stream().map(d -> {
             DoctorResponse resp = DoctorResponse.fromEntity(d);
             if (d.getClinicId() != null) {
                 resp.setClinicName(clinicNames.get(d.getClinicId()));
             }
+            resp.setSlotDuration(doctorSlotDuration.get(d.getId()));
             return resp;
         }).toList();
     }

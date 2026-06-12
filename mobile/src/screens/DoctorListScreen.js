@@ -6,7 +6,6 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { doctorApi } from '../api/doctorApi';
 import { useAuth } from '../context/AuthContext';
-import { usePermission } from '../hooks/usePermission';
 import DoctorCard from '../components/DoctorCard';
 import { colors, borderRadius, shadows } from '../theme';
 
@@ -15,7 +14,6 @@ export default function DoctorListScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('name');
   const { user } = useAuth();
   const canManageDoctors = user?.role === 'DOCTOR';
 
@@ -43,15 +41,7 @@ export default function DoctorListScreen({ navigation }) {
              (d.specialization || '').toLowerCase().includes(q) ||
              (d.email || '').toLowerCase().includes(q);
     })
-    .sort((a, b) => {
-      const aName = (a.name || '').toLowerCase();
-      const bName = (b.name || '').toLowerCase();
-      const aSpec = (a.specialization || '').toLowerCase();
-      const bSpec = (b.specialization || '').toLowerCase();
-      if (sortBy === 'name') return aName.localeCompare(bName);
-      if (sortBy === 'specialization') return aSpec.localeCompare(bSpec) || aName.localeCompare(bName);
-      return 0;
-    });
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   if (loading) {
     return (
@@ -69,7 +59,7 @@ export default function DoctorListScreen({ navigation }) {
           <Text style={styles.searchIcon}>⌕</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search doctors..."
+            placeholder="Search doctors by name or specialization..."
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -79,20 +69,6 @@ export default function DoctorListScreen({ navigation }) {
               <Text style={styles.clearIcon}>✕</Text>
             </TouchableOpacity>
           ) : null}
-        </View>
-        <View style={styles.sortRow}>
-          <TouchableOpacity
-            style={[styles.sortChip, sortBy === 'name' && styles.sortChipActive]}
-            onPress={() => setSortBy('name')}
-          >
-            <Text style={[styles.sortChipText, sortBy === 'name' && styles.sortChipTextActive]}>Name</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.sortChip, sortBy === 'specialization' && styles.sortChipActive]}
-            onPress={() => setSortBy('specialization')}
-          >
-            <Text style={[styles.sortChipText, sortBy === 'specialization' && styles.sortChipTextActive]}>Specialization</Text>
-          </TouchableOpacity>
         </View>
         <Text style={styles.countText}>
           {searchQuery ? `${filtered.length} of ${doctors.length}` : `${doctors.length} doctor${doctors.length === 1 ? '' : 's'}`}
@@ -141,11 +117,6 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 14, color: colors.text, fontWeight: '500', paddingVertical: 0 },
   clearBtn: { padding: 4 },
   clearIcon: { fontSize: 14, color: colors.textMuted, fontWeight: '600' },
-  sortRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
-  sortChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border },
-  sortChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  sortChipText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary },
-  sortChipTextActive: { color: '#FFFFFF' },
   countText: { fontSize: 12, color: colors.textMuted, fontWeight: '600', marginTop: 8, marginLeft: 2 },
   listContent: { paddingVertical: 8, paddingBottom: 80 },
   empty: { alignItems: 'center', paddingHorizontal: 32, justifyContent: 'center' },

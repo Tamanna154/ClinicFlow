@@ -64,6 +64,7 @@ import PatientHistoryScreen from './src/screens/PatientHistoryScreen';
 import StaffHistoryScreen from './src/screens/StaffHistoryScreen';
 import PatientProfileScreen from './src/screens/PatientProfileScreen';
 import CredentialReportScreen from './src/screens/CredentialReportScreen';
+import SalaryScreen from './src/screens/SalaryScreen';
 
 
 import ErrorBoundary from './src/components/ErrorBoundary';
@@ -90,6 +91,7 @@ const headerOpts = {
 const TAB_ICONS = {
   Dashboard: '🏡', Schedule: '📅', Appts: '📅', Patients: '👤',
   Doctors: '🩺', Stock: '📦', Billing: '🧾', Income: '💵', Staff: '👥',
+  Salary: '💰',
   'Doctor Dashboard': '🏡',
   Home: '🏡',
   Meds: '💊',
@@ -266,8 +268,8 @@ function IncomeStack() {
 
 function AdminDashboardStack() {
   return (
-    <Stack.Navigator screenOptions={{ ...headerOpts, headerRight: () => <HeaderRight /> }}>
-      <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ title: 'Dashboard' }} />
+    <Stack.Navigator screenOptions={{ ...headerOpts }}>
+      <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ headerShown: false }} />
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} initialParams={{ isDoctor: true }} options={{ title: 'Appointment' }} />
       <Stack.Screen name="AppointmentList" component={AppointmentListScreen} options={{ title: 'Appointments' }} />
       <Stack.Screen name="Consultation" component={ConsultationScreen} options={{ title: 'Consultation' }} />
@@ -447,6 +449,14 @@ function AdminScheduleStack() {
   );
 }
 
+function SalaryStack() {
+  return (
+    <Stack.Navigator screenOptions={{ ...headerOpts }}>
+      <Stack.Screen name="SalaryMain" component={SalaryScreen} options={{ headerShown: false }} />
+    </Stack.Navigator>
+  );
+}
+
 function AdminTabs() {
   return (
     <Tab.Navigator tabBar={(props) => <MyTabBar {...props} />} screenOptions={{ headerShown: false }}>
@@ -455,6 +465,7 @@ function AdminTabs() {
       <Tab.Screen name="Patients" component={PatientStack} options={{ tabBarLabel: 'Patients' }} />
       <Tab.Screen name="Doctors" component={DoctorStack} options={{ tabBarLabel: 'Doctors' }} />
       <Tab.Screen name="Staff" component={StaffStack} options={{ tabBarLabel: 'Staff' }} />
+      <Tab.Screen name="Salary" component={SalaryStack} options={{ tabBarLabel: 'Salary' }} />
       <Tab.Screen name="Billing" component={BillingStack} options={{ tabBarLabel: 'Billing' }} />
       <Tab.Screen name="Inventory" component={InventoryStack} options={{ tabBarLabel: 'Stock' }} />
       <Tab.Screen name="Finance" component={IncomeStack} options={{ tabBarLabel: 'Finance' }} />

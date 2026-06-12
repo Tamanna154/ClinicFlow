@@ -118,6 +118,27 @@ export default function BillDetailScreen({ route }) {
       </View>
 
       <View style={styles.actionBar}>
+        {bill.paymentStatus !== 'PAID' && (
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: colors.success + '15', borderColor: colors.success }]}
+            onPress={async () => {
+              Alert.alert('Mark as Paid', 'Confirm payment received?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Confirm', onPress: async () => {
+                  try {
+                    const updated = await billingApi.updatePaymentStatus(bill.id, 'PAID', bill.paymentMethod);
+                    setBill(updated);
+                    Alert.alert('Updated', 'Payment status marked as PAID');
+                  } catch (e) { Alert.alert('Error', e.message); }
+                }},
+              ]);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.actionIcon, { color: colors.success }]}>✓</Text>
+            <Text style={[styles.actionLabel, { color: colors.success }]}>Mark Paid</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           style={styles.actionBtn}
           onPress={async () => {

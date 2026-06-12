@@ -13,4 +13,8 @@ public interface DoctorAvailabilityRepository extends JpaRepository<DoctorAvaila
     Optional<DoctorAvailability> findByDoctorIdAndDayOfWeek(Long doctorId, String dayOfWeek);
 
     List<DoctorAvailability> findByDoctorIdAndIsAvailableTrue(Long doctorId);
+
+    List<DoctorAvailability> findByDoctorId(Long doctorId);
+
+    List<DoctorAvailability> findByDoctorIdIn(List<Long> doctorIds);
 }

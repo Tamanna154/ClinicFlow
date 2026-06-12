@@ -231,10 +231,7 @@ export default function PatientDashboardScreen({ navigation }) {
   };
 
   const handleLogout = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: logout }
-    ]);
+    logout();
   };
 
   const selectCategory = (catName) => {
@@ -382,6 +379,107 @@ export default function PatientDashboardScreen({ navigation }) {
             ))}
           </View>
         )}
+        {/* Medication Streak Calendar */}
+        {medications.length > 0 && (
+          <View style={styles.streakSection}>
+            <View style={styles.streakHeader}>
+              <View>
+                <Text style={styles.streakTitle}>📊 Medication Streak</Text>
+                <Text style={styles.streakSub}>Track your daily medication intake</Text>
+              </View>
+              <View style={styles.streakBadge}>
+                <Text style={styles.streakBadgeText}>
+                  {medications.filter(m => {
+                    if (!m.lastTakenAt) return false;
+                    return new Date(m.lastTakenAt).toDateString() === new Date().toDateString();
+                  }).length}/{medications.length}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.streakDaysRow}>
+              {[...Array(7)].map((_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - (6 - i));
+                const dateStr = d.toDateString();
+                const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2);
+                const dayNum = d.getDate();
+                const allTaken = medications.length > 0 && medications.every(m => {
+                  if (!m.lastTakenAt) return false;
+                  return new Date(m.lastTakenAt).toDateString() === dateStr;
+                });
+                const someTaken = medications.some(m => {
+                  if (!m.lastTakenAt) return false;
+                  return new Date(m.lastTakenAt).toDateString() === dateStr;
+                });
+                const isToday = dateStr === new Date().toDateString();
+                const isFuture = d > new Date();
+                let bgColor = isFuture ? '#F8FAFC' : allTaken ? '#ECFDF5' : someTaken ? '#FFFBEB' : '#FEF2F2';
+                let borderColor = isFuture ? '#E2E8F0' : allTaken ? '#6EE7B7' : someTaken ? '#FCD34D' : '#FCA5A5';
+                let statusIcon = isFuture ? '' : allTaken ? '✓' : someTaken ? '!' : '✕';
+                return (
+                  <View key={i} style={[styles.streakDay, isToday && styles.streakDayToday, { backgroundColor: bgColor, borderColor: isToday ? colors.primary : borderColor }]}>
+                    <Text style={[styles.streakDayLabel, isToday && { color: colors.primary }]}>{dayLabel}</Text>
+                    <Text style={[styles.streakDayNum, isToday && { color: colors.primary }]}>{dayNum}</Text>
+                    <View style={[styles.streakDot, { backgroundColor: isFuture ? '#E2E8F0' : allTaken ? '#10B981' : someTaken ? '#F59E0B' : '#EF4444' }]}>
+                      <Text style={styles.streakDotText}>{statusIcon}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+            <View style={styles.streakFooter}>
+              <View style={styles.streakStat}>
+                <Text style={styles.streakStatValue}>
+                  {(() => {
+                    let streak = 0;
+                    for (let i = 0; i < 30; i++) {
+                      const d = new Date();
+                      d.setDate(d.getDate() - i);
+                      const ds = d.toDateString();
+                      const allOk = medications.length > 0 && medications.every(m => {
+                        if (!m.lastTakenAt) return false;
+                        return new Date(m.lastTakenAt).toDateString() === ds;
+                      });
+                      if (allOk) streak++;
+                      else break;
+                    }
+                    return streak;
+                  })()} days
+                </Text>
+                <Text style={styles.streakStatLabel}>Current Streak</Text>
+              </View>
+              <View style={styles.streakStatDivider} />
+              <View style={styles.streakStat}>
+                <Text style={styles.streakStatValue}>
+                  {medications.filter(m => {
+                    if (!m.lastTakenAt) return false;
+                    return new Date(m.lastTakenAt).toDateString() === new Date().toDateString();
+                  }).length}/{medications.length}
+                </Text>
+                <Text style={styles.streakStatLabel}>Taken Today</Text>
+              </View>
+              <View style={styles.streakStatDivider} />
+              <View style={styles.streakStat}>
+                <Text style={styles.streakStatValue}>{medications.length}</Text>
+                <Text style={styles.streakStatLabel}>Total Meds</Text>
+              </View>
+            </View>
+            <Text style={styles.streakInfo}>
+              {medications.filter(m => {
+                if (!m.lastTakenAt) return false;
+                return new Date(m.lastTakenAt).toDateString() === new Date().toDateString();
+              }).length === medications.length
+                ? '✅ All medications taken today! Great job!'
+                : medications.filter(m => {
+                    if (!m.lastTakenAt) return false;
+                    return new Date(m.lastTakenAt).toDateString() === new Date().toDateString();
+                  }).length > 0
+                  ? '⚠️ Some medications still pending for today'
+                  : '⏰ Don\'t forget to take your medications today!'}
+            </Text>
+          </View>
+        )}
+
         {/* Promotional Banner */}
         <View style={styles.promoBanner}>
           <View style={styles.promoContent}>
@@ -914,6 +1012,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 20,
   },
+  streakSection: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, marginBottom: 20, borderWidth: 1, borderColor: '#E2E8F0', ...shadows.md },
+  streakHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+  streakTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
+  streakSub: { fontSize: 11, color: '#64748B', marginTop: 2, fontWeight: '500' },
+  streakBadge: { backgroundColor: colors.primary + '10', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: colors.primary + '20' },
+  streakBadgeText: { fontSize: 13, fontWeight: '800', color: colors.primary },
+  streakDaysRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },
+  streakDay: { width: 46, height: 60, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, ...shadows.sm },
+  streakDayToday: { borderWidth: 2.5 },
+  streakDayLabel: { fontSize: 9, fontWeight: '700', color: '#64748B', textTransform: 'uppercase' },
+  streakDayNum: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginTop: 1 },
+  streakDot: { width: 16, height: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 3 },
+  streakDotText: { fontSize: 8, fontWeight: '800', color: '#FFFFFF' },
+  streakFooter: { flexDirection: 'row', backgroundColor: '#F8FAFC', borderRadius: 14, padding: 12, marginBottom: 8 },
+  streakStat: { flex: 1, alignItems: 'center' },
+  streakStatValue: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
+  streakStatLabel: { fontSize: 9, fontWeight: '600', color: '#94A3B8', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.3 },
+  streakStatDivider: { width: 1, height: 28, backgroundColor: '#E2E8F0', marginHorizontal: 4, alignSelf: 'center' },
+  streakInfo: { fontSize: 12, color: '#64748B', textAlign: 'center', fontWeight: '600' },
   remindersContainer: { backgroundColor: '#EEF2F6', borderRadius: 20, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: '#CBD5E1' },
   remindersHeader: { fontSize: 13, fontWeight: '800', color: colors.primary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   reminderBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, marginBottom: 6, borderWidth: 1, borderColor: '#E2E8F0', ...shadows.sm },

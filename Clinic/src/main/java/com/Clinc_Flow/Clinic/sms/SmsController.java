@@ -28,18 +28,44 @@ public class SmsController {
         for (String phone : request.getPhoneNumbers()) {
             try {
                 notificationService.sendSms(phone, request.getMessage());
+                results.add(Map.of("phone", phone, "status", "SENT"));
             } catch (Exception e) {
-                log.warn("SMS failed, falling back to log: {}", e.getMessage());
-                log.info("SENDING SMS to {}: {}", phone, request.getMessage());
+                log.warn("SMS failed for {}: {}", phone, e.getMessage());
+                results.add(Map.of("phone", phone, "status", "FAILED", "error", e.getMessage()));
             }
-            Map<String, Object> entry = new HashMap<>();
-            entry.put("phone", phone);
-            entry.put("status", "SIMULATED_SENT");
-            results.add(entry);
         }
+        long sent = results.stream().filter(r -> "SENT".equals(r.get("status"))).count();
         return ResponseEntity.ok(Map.of(
             "total", results.size(),
-            "message", "SMS sent to " + results.size() + " numbers",
+            "sent", sent,
+            "failed", results.size() - sent,
+            "results", results
+        ));
+    }
+
+    @PostMapping("/whatsapp")
+    public ResponseEntity<?> sendBulkWhatsApp(@RequestBody BulkSmsRequest request) {
+        if (request.getPhoneNumbers() == null || request.getPhoneNumbers().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No phone numbers provided"));
+        }
+        if (request.getMessage() == null || request.getMessage().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Message cannot be empty"));
+        }
+        List<Map<String, Object>> results = new ArrayList<>();
+        for (String phone : request.getPhoneNumbers()) {
+            try {
+                notificationService.sendWhatsApp(phone, request.getMessage());
+                results.add(Map.of("phone", phone, "status", "SENT"));
+            } catch (Exception e) {
+                log.warn("WhatsApp failed for {}: {}", phone, e.getMessage());
+                results.add(Map.of("phone", phone, "status", "FAILED", "error", e.getMessage()));
+            }
+        }
+        long sent = results.stream().filter(r -> "SENT".equals(r.get("status"))).count();
+        return ResponseEntity.ok(Map.of(
+            "total", results.size(),
+            "sent", sent,
+            "failed", results.size() - sent,
             "results", results
         ));
     }

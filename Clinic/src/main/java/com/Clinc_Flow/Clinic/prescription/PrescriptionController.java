@@ -17,6 +17,11 @@ public class PrescriptionController {
 
     private final PrescriptionService prescriptionService;
 
+    @GetMapping
+    public ResponseEntity<List<PrescriptionResponse>> getAll() {
+        return ResponseEntity.ok(prescriptionService.getAll());
+    }
+
     @PostMapping("/consultation/{consultationId}")
     public ResponseEntity<PrescriptionResponse> create(
             @PathVariable Long consultationId,

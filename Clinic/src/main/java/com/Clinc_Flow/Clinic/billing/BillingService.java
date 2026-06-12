@@ -166,6 +166,29 @@ public class BillingService {
         return response;
     }
 
+    @Transactional
+    public BillResponse updatePaymentStatus(Long billId, String paymentStatus, String paymentMethod) {
+        Bill bill = billRepository.findById(billId)
+                .orElseThrow(() -> new ResourceNotFoundException("Bill", billId));
+        bill.setPaymentStatus(paymentStatus);
+        if (paymentMethod != null) {
+            bill.setPaymentMethod(paymentMethod);
+        }
+        bill = billRepository.save(bill);
+
+        if ("PAID".equalsIgnoreCase(paymentStatus)) {
+            createIncomeRecord("MEDICINE_SALE", bill.getId(), bill.getTotalAmount(),
+                    bill.getPaymentMethod(), null, "Payment received - Bill " + bill.getBillNumber());
+        }
+
+        BillResponse response = BillResponse.fromEntity(bill);
+        patientRepository.findById(bill.getPatientId()).ifPresent(p -> {
+            response.setPatientName(p.getName());
+            response.setPatientPhone(p.getPhone());
+        });
+        return response;
+    }
+
     @Transactional(readOnly = true)
     public BillingSummaryResponse getSummary() {
         long totalBills = billRepository.count();

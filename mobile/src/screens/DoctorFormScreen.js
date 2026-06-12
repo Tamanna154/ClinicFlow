@@ -23,6 +23,7 @@ export default function DoctorFormScreen({ route, navigation }) {
     clinicId: existing?.clinicId ?? null,
     availabilityStartTime: '09:00',
     availabilityEndTime: '17:00',
+    slotDuration: existing?.slotDuration ? String(existing.slotDuration) : '30',
   });
 
   const [achievements, setAchievements] = useState(
@@ -87,6 +88,7 @@ export default function DoctorFormScreen({ route, navigation }) {
         achievements: achievements.filter(a => a.title.trim()),
         clinicId: form.clinicId || null,
       };
+      payload.slotDuration = parseInt(form.slotDuration, 10) || 30;
       if (!isEdit) {
         payload.availabilityStartTime = form.availabilityStartTime.trim() || '09:00';
         payload.availabilityEndTime = form.availabilityEndTime.trim() || '17:00';
@@ -225,10 +227,14 @@ export default function DoctorFormScreen({ route, navigation }) {
           )}
         </View>
 
-        {!isEdit && (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Availability Setup</Text>
-            <View style={styles.timeRow}>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Availability Setup</Text>
+          <Field label="Slot Duration (minutes)" error={errors.slotDuration}>
+            <TextInput style={[styles.input, errors.slotDuration && styles.inputError]} value={form.slotDuration} onChangeText={(v) => updateField('slotDuration', v)} placeholder="e.g. 30" placeholderTextColor={colors.textMuted} keyboardType="number-pad" />
+          </Field>
+          {!isEdit && (
+            <>
+          <View style={styles.timeRow}>
               <Field label="Start Time (HH:MM)" style={{ flex: 1, marginRight: 6 }}>
                 <TextInput style={styles.input} value={form.availabilityStartTime} onChangeText={(v) => updateField('availabilityStartTime', v)} placeholder="e.g. 09:00" placeholderTextColor={colors.textMuted} />
               </Field>
@@ -259,8 +265,9 @@ export default function DoctorFormScreen({ route, navigation }) {
                 })}
               </View>
             </Field>
-          </View>
+            </>
         )}
+        </View>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Settings</Text>

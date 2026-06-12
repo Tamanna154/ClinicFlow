@@ -190,22 +190,24 @@ public class DoctorStaffService {
             staffCompensationRepository.save(comp);
         }
 
-        // Send SMS to staff member
+        // Send SMS and WhatsApp to staff member
         if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
             try {
-                String smsMsg = "Welcome to ClinicFlow! Your staff login account has been created.\nUsername: " + tempUsername + "\nPassword: " + password;
-                notificationService.sendSms(request.getPhone(), smsMsg);
+                String credMsg = "Welcome to ClinicFlow! Your staff login account has been created.\nUsername: " + tempUsername + "\nPassword: " + password + "\nPlease change password after first login.";
+                notificationService.sendSms(request.getPhone(), credMsg);
+                notificationService.sendWhatsApp(request.getPhone(), credMsg);
             } catch (Exception e) {
-                // Ignore to avoid blocking creation
+                log.warn("Failed to send notification to staff: {}", e.getMessage());
             }
         }
 
-        // Send SMS to Admin (7383733435)
+        // Send SMS and WhatsApp to Admin
         try {
             String adminMsg = "Admin Alert: Staff " + request.getFullName() + " created.\nUsername: " + tempUsername + "\nPassword: " + password;
             notificationService.sendSms("7383733435", adminMsg);
+            notificationService.sendWhatsApp("7383733435", adminMsg);
         } catch (Exception e) {
-            // Ignore
+            log.warn("Failed to send admin notification: {}", e.getMessage());
         }
 
         StaffResponse response = mapToStaffResponse(ds);

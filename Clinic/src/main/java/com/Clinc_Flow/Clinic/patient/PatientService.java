@@ -98,22 +98,24 @@ public class PatientService {
                 .build();
         userRepository.save(user);
 
-        // Send SMS to Patient
+        // Send SMS and WhatsApp to Patient
         if (patient.getPhone() != null && !patient.getPhone().trim().isEmpty()) {
             try {
-                String smsMsg = "Welcome to ClinicFlow! Your patient portal account has been created.\nUsername: " + tempUsername + "\nPassword: " + password;
-                notificationService.sendSms(patient.getPhone(), smsMsg);
+                String credMsg = "Welcome to ClinicFlow! Your patient portal account has been created.\nUsername: " + tempUsername + "\nPassword: " + password + "\nPlease change password after first login.";
+                notificationService.sendSms(patient.getPhone(), credMsg);
+                notificationService.sendWhatsApp(patient.getPhone(), credMsg);
             } catch (Exception e) {
-                // Ignore
+                log.warn("Failed to send notification to patient: {}", e.getMessage());
             }
         }
 
-        // Send SMS to Admin (7383733435)
+        // Send SMS and WhatsApp to Admin (7383733435)
         try {
             String adminMsg = "Admin Alert: Patient " + patient.getName() + " created.\nUsername: " + tempUsername + "\nPassword: " + password;
             notificationService.sendSms("7383733435", adminMsg);
+            notificationService.sendWhatsApp("7383733435", adminMsg);
         } catch (Exception e) {
-            // Ignore
+            log.warn("Failed to send admin notification: {}", e.getMessage());
         }
 
         PatientResponse response = PatientResponse.fromEntity(patient);

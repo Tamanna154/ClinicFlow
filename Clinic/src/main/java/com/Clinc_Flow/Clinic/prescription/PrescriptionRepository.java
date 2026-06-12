@@ -10,4 +10,6 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, Long
     Optional<Prescription> findByConsultationId(Long consultationId);
     Optional<Prescription> findByPrescriptionNumber(String prescriptionNumber);
     List<Prescription> findByPatientIdAndConsultationIdIsNotNullOrderByCreatedAtDesc(Long patientId);
+
+    List<Prescription> findAllByOrderByCreatedAtDesc();
 }

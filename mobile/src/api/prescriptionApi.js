@@ -2,6 +2,13 @@ import { authFetch } from './client';
 import { getApiBase } from './apiBase';
 
 export const prescriptionApi = {
+  async getAll() {
+    const base = getApiBase();
+    const res = await authFetch(`${base}/prescriptions`);
+    if (!res.ok) throw new Error('Failed to fetch prescriptions');
+    return res.json();
+  },
+
   async create(consultationId, data) {
     const base = getApiBase();
     const res = await authFetch(`${base}/prescriptions/consultation/${consultationId}`, {

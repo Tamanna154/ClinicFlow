@@ -37,4 +37,19 @@ export const billingApi = {
     if (!res.ok) throw new Error('Failed to fetch summary');
     return res.json();
   },
+
+  async updatePaymentStatus(id, paymentStatus, paymentMethod) {
+    const base = getApiBase();
+    const res = await authFetch(`${base}/billing/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentStatus, paymentMethod }),
+    });
+    if (!res.ok) {
+      let msg = 'Failed to update payment status';
+      try { const e = await res.json(); msg = e.error || msg; } catch (ex) {}
+      throw new Error(msg);
+    }
+    return res.json();
+  },
 };

@@ -31,16 +31,25 @@ export default function StaffListScreen({ navigation }) {
   useFocusEffect(useCallback(() => { fetchStaff(); }, []));
 
   const handleRemove = (item) => {
-    Alert.alert('Remove Staff', `Remove ${item.staffName} from your staff?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove', style: 'destructive',
-        onPress: async () => {
-          try { await staffApi.removeStaff(item.id); fetchStaff(); }
-          catch (err) { Alert.alert('Error', err.message); }
+    Alert.alert(
+      'Remove Staff',
+      `Are you sure you want to remove ${item.staffName} from your staff?\n\nThis action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove', style: 'destructive',
+          onPress: async () => {
+            try {
+              await staffApi.removeStaff(item.id);
+              fetchStaff();
+              Alert.alert('✅ Removed', `${item.staffName} has been removed from your staff successfully.`);
+            } catch (err) {
+              Alert.alert('❌ Error', err.message || 'Could not remove staff member. Please try again.');
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   if (loading) {

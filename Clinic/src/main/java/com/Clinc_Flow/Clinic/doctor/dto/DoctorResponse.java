@@ -33,6 +33,8 @@ public class DoctorResponse {
     private String tempUsername;
     private String tempPassword;
 
+    private Integer slotDuration;
+
     private static List<AchievementDto> mapAchievements(String json) {
         if (json == null || json.trim().isEmpty()) return List.of();
         try {

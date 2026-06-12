@@ -40,6 +40,15 @@ public class BillingController {
         return ResponseEntity.ok(billingService.getBillById(id));
     }
 
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<BillResponse> updatePaymentStatus(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body) {
+        String status = body.get("paymentStatus");
+        String method = body.get("paymentMethod");
+        return ResponseEntity.ok(billingService.updatePaymentStatus(id, status, method));
+    }
+
     @GetMapping("/{id}/print")
     public ResponseEntity<BillResponse> printBill(@PathVariable Long id) {
         return ResponseEntity.ok(billingService.getBillById(id));

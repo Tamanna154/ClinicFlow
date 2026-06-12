@@ -95,17 +95,14 @@ public class AppointmentService {
             Optional<DoctorAvailability> avail = availabilityRepository
                     .findByDoctorIdAndDayOfWeek(request.getDoctorId(), dayOfWeek);
 
-            boolean inAvailability = avail
-                    .filter(DoctorAvailability::getIsAvailable)
-                    .filter(a -> !request.getStartTime().isBefore(a.getStartTime())
-                              && !request.getEndTime().isAfter(a.getEndTime()))
-                    .isPresent();
-
-            if (!inAvailability) {
-                StringBuilder msg = new StringBuilder("Requested time is outside the doctor's availability");
-                avail.filter(DoctorAvailability::getIsAvailable).ifPresent(a ->
-                        msg.append(" (available: ").append(a.getStartTime()).append("-").append(a.getEndTime()).append(")"));
-                throw new IllegalArgumentException(msg.toString());
+            if (avail.isPresent() && avail.get().getIsAvailable()) {
+                DoctorAvailability a = avail.get();
+                if (request.getStartTime().isBefore(a.getStartTime()) || request.getEndTime().isAfter(a.getEndTime())) {
+                    throw new IllegalArgumentException(
+                        "Requested time is outside the doctor's availability (available: " +
+                        a.getStartTime() + "-" + a.getEndTime() + ")"
+                    );
+                }
             }
         }
 

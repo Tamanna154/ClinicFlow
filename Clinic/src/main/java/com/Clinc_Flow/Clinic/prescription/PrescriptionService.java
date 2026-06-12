@@ -168,6 +168,12 @@ public class PrescriptionService {
     }
 
     @Transactional(readOnly = true)
+    public List<PrescriptionResponse> getAll() {
+        return prescriptionRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(PrescriptionResponse::fromEntity).toList();
+    }
+
+    @Transactional(readOnly = true)
     public PrescriptionResponse getByConsultation(Long consultationId) {
         Prescription p = prescriptionRepository.findByConsultationId(consultationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prescription", consultationId));
